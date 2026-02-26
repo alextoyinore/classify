@@ -4,6 +4,7 @@ const { Server } = require('socket.io');
 const { spawn } = require('child_process');
 const path = require('path');
 const cors = require('cors');
+const os = require('os');
 
 // Try to dynamically require 'open' as it is ESM in newer versions.
 let openLib;
@@ -22,6 +23,30 @@ app.use(express.json());
 const processes = {};
 
 const npmCmd = process.platform === 'win32' ? 'npm.cmd' : 'npm';
+
+function getLANIP() {
+    const interfaces = os.networkInterfaces();
+    for (const name in interfaces) {
+        for (const iface of interfaces[name]) {
+            if (iface.family === 'IPv4' && !iface.internal) {
+                return iface.address;
+            }
+        }
+    }
+    return '127.0.0.1';
+}
+
+const LAN_IP = getLANIP();
+const PORT = 3005;
+
+app.get('/api/config', (req, res) => {
+    res.json({
+        lanIP: LAN_IP,
+        clientUrl: `http://${LAN_IP}:5173`,
+        apiUrl: `http://${LAN_IP}:5000/api`,
+        managerUrl: `http://${LAN_IP}:${PORT}`
+    });
+});
 
 app.post('/api/start', (req, res) => {
     const { service } = req.body;
@@ -99,7 +124,7 @@ app.get('/api/status', (req, res) => {
     });
 });
 
-const PORT = 3005;
+// const PORT = 3005;
 server.listen(PORT, async () => {
     console.log(`Service Manager is running at http://localhost:${PORT}`);
 
