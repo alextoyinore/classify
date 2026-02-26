@@ -56,7 +56,15 @@ router.post('/', async (req, res, next) => {
             },
             include: { semesters: true },
         });
-        res.status(201).json({ session });
+        res.status(201).json(session); // return object directly, not wrapped in {session}
+    } catch (err) { next(err); }
+});
+
+// DELETE /api/sessions/:id
+router.delete('/:id', requireRole('ADMIN'), async (req, res, next) => {
+    try {
+        await prisma.academicSession.delete({ where: { id: req.params.id } });
+        res.json({ message: 'Session deleted' });
     } catch (err) { next(err); }
 });
 

@@ -21,6 +21,7 @@ import ServerControlPage from './pages/ServerControlPage';
 import SettingsPage from './pages/SettingsPage';
 import ProfilePage from './pages/ProfilePage';
 import AcademicStructurePage from './pages/AcademicStructurePage';
+import SessionManagementPage from './pages/SessionManagementPage';
 
 function ProtectedRoute({ children, roles }) {
   const { user } = useAuth();
@@ -52,6 +53,7 @@ function AppRoutes() {
       <Route path="/server-control" element={<ProtectedRoute roles={['ADMIN']}><ServerControlPage /></ProtectedRoute>} />
       <Route path="/settings" element={<ProtectedRoute roles={['ADMIN']}><SettingsPage /></ProtectedRoute>} />
       <Route path="/academic-structure" element={<ProtectedRoute roles={['ADMIN']}><AcademicStructurePage /></ProtectedRoute>} />
+      <Route path="/academic-sessions" element={<ProtectedRoute roles={['ADMIN']}><SessionManagementPage /></ProtectedRoute>} />
 
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>

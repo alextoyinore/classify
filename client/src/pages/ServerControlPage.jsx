@@ -5,9 +5,11 @@ const AGENT_URL = import.meta.env.VITE_AGENT_URL || 'http://localhost:9001';
 
 export default function ServerControlPage() {
     const [running, setRunning] = useState(false);
+    const [managed, setManaged] = useState(false);
     const [loading, setLoading] = useState(true);
     const [acting, setActing] = useState(false);
     const [logs, setLogs] = useState([]);
+    const [port, setPort] = useState(5000);
     const logsRef = useRef(null);
 
     const addLog = (msg, type = 'info') => {
@@ -22,6 +24,8 @@ export default function ServerControlPage() {
             });
             const data = await res.json();
             setRunning(data.running);
+            setManaged(data.managed);
+            if (data.port) setPort(data.port);
         } catch {
             addLog('Cannot reach agent on port 9001', 'error');
         }
@@ -79,10 +83,12 @@ export default function ServerControlPage() {
                 </div>
                 <div style={{ flex: 1 }}>
                     <div style={{ fontSize: '1.3rem', fontWeight: 800, marginBottom: 4 }}>
-                        Server is {loading ? 'checking…' : running ? 'Running' : 'Stopped'}
+                        Server is {loading ? 'checking…' : !running ? 'Stopped' : managed ? 'Running' : 'External'}
                     </div>
                     <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                        {running ? 'API available at port 5000 on the local network' : 'API is offline — students cannot connect'}
+                        {running
+                            ? (managed ? `API available at port ${port} (Managed)` : 'API is online (Externally Managed)')
+                            : 'API is offline — students cannot connect'}
                     </div>
                 </div>
                 <div className="flex gap-12">

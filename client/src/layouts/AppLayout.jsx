@@ -2,7 +2,7 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import {
     LayoutDashboard, Users, UserCheck, BookOpen, ClipboardCheck,
     FileText, Monitor, Cloud, Settings, Server, LogOut, GraduationCap,
-    ChevronRight, User, Building2
+    ChevronRight, User, Building2, Calendar
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
@@ -24,6 +24,7 @@ const nav = [
             { to: '/courses', label: 'Courses', icon: BookOpen },
             { to: '/attendance', label: 'Attendance', icon: ClipboardCheck, roles: ['ADMIN', 'INSTRUCTOR'] },
             { to: '/exams', label: 'Examinations', icon: FileText, roles: ['ADMIN', 'INSTRUCTOR'] },
+            { to: '/academic-sessions', label: 'Academic Sessions', icon: Calendar, roles: ['ADMIN'] },
             { to: '/academic-structure', label: 'Academic Structure', icon: Building2, roles: ['ADMIN'] },
         ]
     },
