@@ -6,7 +6,7 @@ const router = express.Router();
 const prisma = new PrismaClient();
 
 // GET /api/departments — List all departments
-router.get('/', authenticate, async (req, res, next) => {
+router.get('/', async (req, res, next) => {
     try {
         const { facultyId } = req.query;
         const where = facultyId ? { facultyId } : {};

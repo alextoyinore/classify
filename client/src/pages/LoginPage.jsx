@@ -16,8 +16,7 @@ export default function LoginPage() {
         identifier: '', // Dual-purpose for Email or Matric
         password: '',
         fullName: '',
-        matricNumber: '',
-        departmentId: ''
+        matricNumber: ''
     });
     const [showPw, setShowPw] = useState(false);
     const [loading, setLoading] = useState(false);
@@ -84,17 +83,6 @@ export default function LoginPage() {
                                     onChange={e => setForm(f => ({ ...f, matricNumber: e.target.value }))}
                                     required
                                 />
-                            </div>
-                            <div className="form-group">
-                                <label>Department</label>
-                                <select
-                                    value={form.departmentId}
-                                    onChange={e => setForm(f => ({ ...f, departmentId: e.target.value }))}
-                                    required
-                                >
-                                    <option value="" disabled>Select Department</option>
-                                    {depts.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
-                                </select>
                             </div>
                         </>
                     ) : (

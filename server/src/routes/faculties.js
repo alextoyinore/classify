@@ -6,7 +6,7 @@ const router = express.Router();
 const prisma = new PrismaClient();
 
 // GET /api/faculties — List all faculties
-router.get('/', authenticate, async (req, res, next) => {
+router.get('/', async (req, res, next) => {
     try {
         const faculties = await prisma.faculty.findMany({
             orderBy: { name: 'asc' },
