@@ -24,6 +24,8 @@ const processes = {};
 
 const npmCmd = process.platform === 'win32' ? 'npm.cmd' : 'npm';
 
+const fs = require('fs');
+
 function getLANIP() {
     const interfaces = os.networkInterfaces();
     for (const name in interfaces) {
@@ -36,20 +38,44 @@ function getLANIP() {
     return '127.0.0.1';
 }
 
-const LAN_IP = getLANIP();
 const PORT = 3005;
 
+function updateEnvFiles(lanIP) {
+    const clientEnvPath = path.join(__dirname, '..', 'client', '.env');
+    const serverEnvPath = path.join(__dirname, '..', 'server', '.env');
+
+    try {
+        if (fs.existsSync(clientEnvPath)) {
+            let content = fs.readFileSync(clientEnvPath, 'utf8');
+            content = content.replace(/VITE_API_URL=.*/, `VITE_API_URL=http://${lanIP}:5000/api`);
+            content = content.replace(/VITE_AGENT_URL=.*/, `VITE_AGENT_URL=http://${lanIP}:9001`);
+            fs.writeFileSync(clientEnvPath, content);
+            console.log(`Updated client/.env with IP: ${lanIP}`);
+        }
+
+        if (fs.existsSync(serverEnvPath)) {
+            // Server might not need the LAN IP in its .env unless it's used for something specific,
+            // but it's good practice to keep it consistent if needed.
+            // Currently server/.env doesn't seem to have a variable that needs LAN IP.
+        }
+    } catch (err) {
+        console.error('Failed to update .env files:', err);
+    }
+}
+
 app.get('/api/config', (req, res) => {
+    const currentIP = getLANIP();
     res.json({
-        lanIP: LAN_IP,
-        clientUrl: `http://${LAN_IP}:5173`,
-        apiUrl: `http://${LAN_IP}:5000/api`,
-        managerUrl: `http://${LAN_IP}:${PORT}`
+        lanIP: currentIP,
+        clientUrl: `http://${currentIP}:5173`,
+        apiUrl: `http://${currentIP}:5000/api`,
+        managerUrl: `http://${currentIP}:${PORT}`
     });
 });
 
 app.post('/api/start', (req, res) => {
     const { service } = req.body;
+    const currentIP = getLANIP();
 
     if (!service || !['client', 'server', 'agent'].includes(service)) {
         return res.status(400).json({ error: 'Invalid service name' });
@@ -58,6 +84,9 @@ app.post('/api/start', (req, res) => {
     if (processes[service]) {
         return res.status(200).json({ message: `${service} is already running` });
     }
+
+    // Auto-update environment variables for the current network
+    updateEnvFiles(currentIP);
 
     const cwd = path.join(__dirname, '..', service);
     const cmdArgs = service === 'agent' ? ['index.js'] : ['run', 'dev'];

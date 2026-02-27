@@ -18,19 +18,43 @@ const computeGrade = (score, total) => {
 router.get('/', async (req, res, next) => {
     try {
         const { courseId, semesterId } = req.query;
-        const exams = await prisma.exam.findMany({
-            where: {
-                ...(courseId && { courseId }),
-                ...(semesterId && { semesterId }),
-            },
-            include: {
-                course: { select: { code: true, title: true } },
-                semester: { select: { name: true, session: { select: { title: true } } } },
-                _count: { select: { scores: true } },
-            },
-            orderBy: { createdAt: 'desc' },
-        });
-        res.json({ exams });
+        const where = {
+            ...(courseId && { courseId }),
+            ...(semesterId && { semesterId }),
+        };
+
+        const [written, cbt] = await Promise.all([
+            prisma.exam.findMany({
+                where,
+                include: {
+                    course: { select: { code: true, title: true } },
+                    semester: { select: { name: true, session: { select: { title: true } } } },
+                    _count: { select: { scores: true } },
+                },
+                orderBy: { createdAt: 'desc' },
+            }),
+            prisma.cbtExam.findMany({
+                where: {
+                    ...where,
+                    // For instructors/admins, show all. For students, only published.
+                    ...(req.user.role === 'STUDENT' && { isPublished: true })
+                },
+                include: {
+                    course: { select: { code: true, title: true } },
+                    semester: { select: { name: true, session: { select: { title: true } } } },
+                    _count: { select: { attempts: true } },
+                },
+                orderBy: { createdAt: 'desc' },
+            })
+        ]);
+
+        // Normalize and merge
+        const unified = [
+            ...written.map(e => ({ ...e, type: e.type || 'WRITTEN', isCbt: false })),
+            ...cbt.map(e => ({ ...e, type: e.mode || 'CBT', isCbt: true }))
+        ].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+        res.json({ data: unified });
     } catch (err) { next(err); }
 });
 
@@ -49,9 +73,38 @@ router.get('/:id', async (req, res, next) => {
 // POST /api/exams
 router.post('/', requireRole('ADMIN', 'INSTRUCTOR'), async (req, res, next) => {
     try {
-        const { courseId, semesterId, title, type, examDate, totalMarks } = req.body;
+        const { courseId, semesterId, title, type, examDate, totalMarks, topicIds, numQuestions } = req.body;
         if (!courseId || !semesterId || !title)
             return res.status(400).json({ error: 'courseId, semesterId, and title are required' });
+
+        if (type === 'CBT') {
+            // Create a CbtExam instead
+            const exam = await prisma.cbtExam.create({
+                data: {
+                    courseId, semesterId, title, mode: 'CBT',
+                    totalMarks: Number(totalMarks) || 100,
+                    topicIds: topicIds || [],
+                    numQuestions: Number(numQuestions) || 0,
+                    instructions: '' // default empty
+                }
+            });
+
+            // Initial pooling if settings provided
+            if (topicIds?.length > 0 && numQuestions > 0) {
+                const pool = await prisma.cbtQuestion.findMany({
+                    where: { courseId, topicId: { in: topicIds }, isActive: true },
+                    select: { id: true }
+                });
+                const shuffled = pool.sort(() => 0.5 - Math.random());
+                const finalQuestionIds = shuffled.slice(0, Number(numQuestions)).map(q => q.id);
+                await prisma.cbtExamQuestion.createMany({
+                    data: finalQuestionIds.map((qId, idx) => ({ examId: exam.id, questionId: qId, order: idx + 1 })),
+                });
+            }
+
+            return res.status(201).json({ exam });
+        }
+
         const exam = await prisma.exam.create({
             data: { courseId, semesterId, title, type: type || 'WRITTEN', examDate: examDate ? new Date(examDate) : null, totalMarks: Number(totalMarks) || 100 },
         });

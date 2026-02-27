@@ -17,7 +17,6 @@ import CbtAdminPage from './pages/CbtAdminPage';
 import CbtExamPage from './pages/CbtExamPage';
 import CbtResults from './pages/CbtResults';
 import CloudSyncPage from './pages/CloudSyncPage';
-import ServerControlPage from './pages/ServerControlPage';
 import SettingsPage from './pages/SettingsPage';
 import ProfilePage from './pages/ProfilePage';
 import AcademicStructurePage from './pages/AcademicStructurePage';
@@ -50,7 +49,6 @@ function AppRoutes() {
       <Route path="/cbt/exam" element={<ProtectedRoute roles={['STUDENT']}><CbtExamPage /></ProtectedRoute>} />
       <Route path="/cbt/results/:id" element={<ProtectedRoute><CbtResults /></ProtectedRoute>} />
       <Route path="/sync" element={<ProtectedRoute roles={['ADMIN']}><CloudSyncPage /></ProtectedRoute>} />
-      <Route path="/server-control" element={<ProtectedRoute roles={['ADMIN']}><ServerControlPage /></ProtectedRoute>} />
       <Route path="/settings" element={<ProtectedRoute roles={['ADMIN']}><SettingsPage /></ProtectedRoute>} />
       <Route path="/academic-structure" element={<ProtectedRoute roles={['ADMIN']}><AcademicStructurePage /></ProtectedRoute>} />
       <Route path="/academic-sessions" element={<ProtectedRoute roles={['ADMIN']}><SessionManagementPage /></ProtectedRoute>} />

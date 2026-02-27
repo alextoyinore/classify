@@ -4,11 +4,10 @@ import { Plus, Search, Edit2, Trash2, X, UserPlus } from 'lucide-react';
 import api from '../api';
 import { useToast } from '../context/ToastContext';
 
-const DEPTS = ['Computer Science', 'Information Technology', 'Electrical Engineering', 'Mathematics', 'Physics', 'Business Administration', 'Accounting', 'Economics'];
 const LEVELS = [100, 200, 300, 400, 500];
 const GENDERS = ['MALE', 'FEMALE', 'OTHER'];
 
-const empty = { firstName: '', lastName: '', middleName: '', email: '', password: '', matricNumber: '', gender: 'MALE', dateOfBirth: '', phone: '', address: '', department: 'Computer Science', faculty: '', level: 100, entryYear: new Date().getFullYear().toString() };
+const empty = { firstName: '', lastName: '', middleName: '', email: '', password: '', matricNumber: '', gender: 'MALE', dateOfBirth: '', phone: '', address: '', departmentId: '', facultyId: '', facultyName: '', level: 100, entryYear: new Date().getFullYear().toString() };
 
 export default function StudentsPage() {
     const toast = useToast();
@@ -19,6 +18,8 @@ export default function StudentsPage() {
     const [dept, setDept] = useState('');
     const [level, setLevel] = useState('');
     const [page, setPage] = useState(1);
+    const [depts, setDepts] = useState([]);
+    const [facs, setFacs] = useState([]);
     const limit = 20;
 
     const [modal, setModal] = useState(null); // null | 'add' | 'edit'
@@ -29,9 +30,15 @@ export default function StudentsPage() {
         setLoading(true);
         try {
             const params = { page, limit, search, department: dept, level: level || undefined };
-            const { data } = await api.get('/students', { params });
-            setStudents(data.data);
-            setTotal(data.total);
+            const [{ data: sData }, { data: dData }, { data: fData }] = await Promise.all([
+                api.get('/students', { params }),
+                api.get('/departments'),
+                api.get('/faculties')
+            ]);
+            setStudents(sData.data);
+            setTotal(sData.total);
+            setDepts(dData || []);
+            setFacs(fData || []);
         } catch { }
         setLoading(false);
     };
@@ -46,7 +53,9 @@ export default function StudentsPage() {
             matricNumber: s.matricNumber, gender: s.gender,
             dateOfBirth: s.dateOfBirth ? s.dateOfBirth.substring(0, 10) : '',
             phone: s.phone || '', address: s.address || '',
-            department: s.department, faculty: s.faculty || '',
+            departmentId: s.departmentId || '',
+            facultyId: s.facultyId || '',
+            facultyName: s.faculty?.name || '',
             level: s.level, entryYear: s.entryYear,
             _id: s.id,
         });
@@ -104,7 +113,7 @@ export default function StudentsPage() {
                 </div>
                 <select value={dept} onChange={e => { setDept(e.target.value); setPage(1); }} className="w-200">
                     <option value="">All Departments</option>
-                    {DEPTS.map(d => <option key={d}>{d}</option>)}
+                    {depts.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
                 </select>
                 <select value={level} onChange={e => { setLevel(e.target.value); setPage(1); }} className="w-140">
                     <option value="">All Levels</option>
@@ -140,7 +149,7 @@ export default function StudentsPage() {
                                             </Link>
                                         </td>
                                         <td style={{ fontFamily: 'monospace', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>{s.matricNumber}</td>
-                                        <td style={{ fontSize: '0.85rem' }}>{s.department}</td>
+                                        <td style={{ fontSize: '0.85rem' }}>{s.department?.name || '—'}</td>
                                         <td><span className="badge badge-blue">{s.level}L</span></td>
                                         <td style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{s.user?.email}</td>
                                         <td><span className={`badge ${s.isActive ? 'badge-green' : 'badge-red'}`}>{s.isActive ? 'Active' : 'Inactive'}</span></td>
@@ -198,11 +207,21 @@ export default function StudentsPage() {
                                 </div>
                                 <div className="form-row">
                                     <div className="form-group"><label>Department *</label>
-                                        <select required value={form.department} onChange={e => setForm(f => ({ ...f, department: e.target.value }))}>
-                                            {DEPTS.map(d => <option key={d}>{d}</option>)}
+                                        <select required value={form.departmentId} onChange={e => {
+                                            const dId = e.target.value;
+                                            const dObj = depts.find(d => d.id === dId);
+                                            setForm(f => ({
+                                                ...f,
+                                                departmentId: dId,
+                                                facultyId: dObj?.facultyId || '',
+                                                facultyName: dObj?.faculty?.name || ''
+                                            }));
+                                        }}>
+                                            <option value="">Select Department</option>
+                                            {depts.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
                                         </select>
                                     </div>
-                                    <div className="form-group"><label>Faculty</label><input value={form.faculty} onChange={e => setForm(f => ({ ...f, faculty: e.target.value }))} /></div>
+                                    <div className="form-group"><label>Faculty</label><input readOnly value={form.facultyName} /></div>
                                 </div>
                                 <div className="form-row">
                                     <div className="form-group"><label>Level *</label>

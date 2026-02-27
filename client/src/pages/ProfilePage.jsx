@@ -217,7 +217,21 @@ export default function ProfilePage() {
                                         <label>Department</label>
                                         <select
                                             value={roleProfile.departmentId || ''}
-                                            onChange={e => setField('departmentId', e.target.value)}
+                                            onChange={e => {
+                                                const dId = e.target.value;
+                                                const dept = deps.find(d => d.id === dId);
+                                                setProfile(p => {
+                                                    const roleKey = user.role.toLowerCase();
+                                                    return {
+                                                        ...p,
+                                                        [roleKey]: {
+                                                            ...p[roleKey],
+                                                            departmentId: dId,
+                                                            facultyId: dept?.facultyId || p[roleKey].facultyId
+                                                        }
+                                                    };
+                                                });
+                                            }}
                                         >
                                             <option value="" disabled>Select Department</option>
                                             {deps.filter(d => !roleProfile.facultyId || d.facultyId === roleProfile.facultyId).map(d => (

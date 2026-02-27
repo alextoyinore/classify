@@ -10,17 +10,26 @@ router.use(authenticate);
 // GET /api/cbt/questions?courseId=&difficulty=
 router.get('/questions', requireRole('ADMIN', 'INSTRUCTOR'), async (req, res, next) => {
     try {
-        const { courseId, difficulty, page = 1, limit = 50 } = req.query;
+        const { courseId, difficulty, topicId, page = 1, limit = 50 } = req.query;
+        const topicIds = req.query.topicIds || req.query['topicIds[]'];
         const skip = (Number(page) - 1) * Number(limit);
+
+        // Handle both single topicId and array topicIds
+        const tIds = topicIds ? (Array.isArray(topicIds) ? topicIds : [topicIds]) : (topicId ? [topicId] : null);
+
         const where = {
             isActive: true,
             ...(courseId && { courseId }),
             ...(difficulty && { difficulty }),
+            ...(tIds && { topicId: { in: tIds } }),
         };
         const [data, total] = await Promise.all([
             prisma.cbtQuestion.findMany({
                 where, skip, take: Number(limit), orderBy: { createdAt: 'desc' },
-                include: { course: { select: { code: true, title: true } } },
+                include: {
+                    course: { select: { code: true, title: true } },
+                    topic: { select: { id: true, title: true } },
+                },
             }),
             prisma.cbtQuestion.count({ where }),
         ]);
@@ -31,14 +40,14 @@ router.get('/questions', requireRole('ADMIN', 'INSTRUCTOR'), async (req, res, ne
 // POST /api/cbt/questions
 router.post('/questions', requireRole('ADMIN', 'INSTRUCTOR'), async (req, res, next) => {
     try {
-        const { courseId, questionText, optionA, optionB, optionC, optionD, correctOption, explanation, marks, difficulty } = req.body;
+        const { courseId, topicId, questionText, optionA, optionB, optionC, optionD, correctOption, explanation, marks, difficulty } = req.body;
         if (!courseId || !questionText || !optionA || !optionB || !optionC || !optionD || !correctOption)
             return res.status(400).json({ error: 'All question fields are required' });
         if (!['A', 'B', 'C', 'D'].includes(correctOption.toUpperCase()))
             return res.status(400).json({ error: 'correctOption must be A, B, C, or D' });
 
         const q = await prisma.cbtQuestion.create({
-            data: { courseId, questionText, optionA, optionB, optionC, optionD, correctOption: correctOption.toUpperCase(), explanation, marks: Number(marks) || 1, difficulty },
+            data: { courseId, topicId, questionText, optionA, optionB, optionC, optionD, correctOption: correctOption.toUpperCase(), explanation, marks: Number(marks) || 1, difficulty },
         });
         res.status(201).json({ question: q });
     } catch (err) { next(err); }
@@ -47,10 +56,10 @@ router.post('/questions', requireRole('ADMIN', 'INSTRUCTOR'), async (req, res, n
 // PUT /api/cbt/questions/:id
 router.put('/questions/:id', requireRole('ADMIN', 'INSTRUCTOR'), async (req, res, next) => {
     try {
-        const { questionText, optionA, optionB, optionC, optionD, correctOption, explanation, marks, difficulty, isActive } = req.body;
+        const { questionText, optionA, optionB, optionC, optionD, correctOption, explanation, marks, difficulty, isActive, topicId } = req.body;
         const q = await prisma.cbtQuestion.update({
             where: { id: req.params.id },
-            data: { questionText, optionA, optionB, optionC, optionD, correctOption: correctOption?.toUpperCase(), explanation, marks: marks ? Number(marks) : undefined, difficulty, isActive },
+            data: { questionText, optionA, optionB, optionC, optionD, correctOption: correctOption?.toUpperCase(), explanation, marks: marks ? Number(marks) : undefined, difficulty, isActive, topicId },
         });
         res.json({ question: q });
     } catch (err) { next(err); }
@@ -61,6 +70,42 @@ router.delete('/questions/:id', requireRole('ADMIN', 'INSTRUCTOR'), async (req, 
     try {
         await prisma.cbtQuestion.update({ where: { id: req.params.id }, data: { isActive: false } });
         res.json({ message: 'Question removed from bank' });
+    } catch (err) { next(err); }
+});
+
+// DELETE /api/cbt/questions/topic/:topicId (hard delete for replacement)
+router.delete('/questions/topic/:topicId', requireRole('ADMIN', 'INSTRUCTOR'), async (req, res, next) => {
+    try {
+        await prisma.cbtQuestion.deleteMany({
+            where: { topicId: req.params.topicId }
+        });
+        res.json({ message: 'All questions in topic deleted' });
+    } catch (err) { next(err); }
+});
+
+// POST /api/cbt/questions/batch — batch upload questions
+router.post('/questions/batch', requireRole('ADMIN', 'INSTRUCTOR'), async (req, res, next) => {
+    try {
+        const { courseId, topicId, questions } = req.body;
+        if (!courseId || !Array.isArray(questions))
+            return res.status(400).json({ error: 'courseId and questions array are required' });
+
+        const data = questions.map(q => ({
+            courseId,
+            topicId: q.topicId || topicId,
+            questionText: q.questionText,
+            optionA: q.optionA,
+            optionB: q.optionB,
+            optionC: q.optionC,
+            optionD: q.optionD,
+            correctOption: q.correctOption?.toUpperCase(),
+            explanation: q.explanation,
+            marks: Number(q.marks) || 1,
+            difficulty: q.difficulty || 'MEDIUM',
+        }));
+
+        const result = await prisma.cbtQuestion.createMany({ data });
+        res.json({ count: result.count });
     } catch (err) { next(err); }
 });
 
@@ -86,12 +131,37 @@ router.get('/exams', async (req, res, next) => {
         });
 
         if (req.user.role === 'STUDENT' && req.user.student) {
+            const student = req.user.student;
             const attempts = await prisma.cbtAttempt.findMany({
-                where: { studentId: req.user.student.id, examId: { in: exams.map(e => e.id) } },
+                where: { studentId: student.id, examId: { in: exams.map(e => e.id) } },
                 select: { examId: true, isCompleted: true, score: true, percentage: true },
             });
             const attemptMap = Object.fromEntries(attempts.map(a => [a.examId, a]));
-            return res.json({ data: exams.map(e => ({ ...e, myAttempt: attemptMap[e.id] || null })), total: exams.length });
+
+            // Check for active attendance sessions for these exams
+            const activeSessions = await prisma.attendanceSession.findMany({
+                where: {
+                    isActive: true,
+                    semesterId: { in: exams.map(e => e.semesterId) },
+                    courseId: { in: exams.map(e => e.courseId) },
+                    AND: [
+                        { OR: [{ departmentId: student.departmentId }, { departmentId: null }] },
+                        { OR: [{ level: student.level }, { level: null }] }
+                    ]
+                },
+                select: { courseId: true, semesterId: true }
+            });
+
+            const sessionSet = new Set(activeSessions.map(s => `${s.courseId}-${s.semesterId}`));
+
+            return res.json({
+                data: exams.map(e => ({
+                    ...e,
+                    myAttempt: attemptMap[e.id] || null,
+                    isSessionActive: sessionSet.has(`${e.courseId}-${e.semesterId}`)
+                })),
+                total: exams.length
+            });
         }
         res.json({ data: exams, total: exams.length });
     } catch (err) { next(err); }
@@ -115,21 +185,41 @@ router.get('/exams/:id', requireRole('ADMIN', 'INSTRUCTOR'), async (req, res, ne
 // POST /api/cbt/exams — create exam and attach questions
 router.post('/exams', requireRole('ADMIN', 'INSTRUCTOR'), async (req, res, next) => {
     try {
-        const { courseId, semesterId, title, instructions, durationMinutes, totalMarks, passMark, startWindow, endWindow, allowReview, questionIds } = req.body;
+        const { courseId, semesterId, title, category, mode, instructions, durationMinutes, totalMarks, passMark, startWindow, endWindow, allowReview, questionIds, topicIds, numQuestions } = req.body;
         if (!courseId || !semesterId || !title)
             return res.status(400).json({ error: 'courseId, semesterId, and title are required' });
 
+        let finalQuestionIds = questionIds || [];
+
+        // Auto-pooling logic
+        if (topicIds && numQuestions && (!questionIds || questionIds.length === 0)) {
+            const pool = await prisma.cbtQuestion.findMany({
+                where: {
+                    courseId,
+                    topicId: { in: topicIds },
+                    isActive: true
+                },
+                select: { id: true }
+            });
+
+            // Shuffle and pick
+            const shuffled = pool.sort(() => 0.5 - Math.random());
+            finalQuestionIds = shuffled.slice(0, numQuestions).map(q => q.id);
+        }
+
         const exam = await prisma.cbtExam.create({
             data: {
-                courseId, semesterId, title, instructions,
+                courseId, semesterId, title, category, mode, instructions,
                 durationMinutes: Number(durationMinutes) || 60,
-                totalMarks: Number(totalMarks) || questionIds.length,
+                totalMarks: Number(totalMarks) || finalQuestionIds.length,
                 passMark: Number(passMark) || 50,
                 startWindow: startWindow ? new Date(startWindow) : null,
                 endWindow: endWindow ? new Date(endWindow) : null,
                 allowReview: allowReview ?? true,
+                topicIds: topicIds || [],
+                numQuestions: numQuestions ? Number(numQuestions) : finalQuestionIds.length,
                 questions: {
-                    create: questionIds.map((qId, idx) => ({ questionId: qId, order: idx + 1 })),
+                    create: finalQuestionIds.map((qId, idx) => ({ questionId: qId, order: idx + 1 })),
                 },
             },
             include: { questions: { include: { question: true } } },
@@ -138,15 +228,17 @@ router.post('/exams', requireRole('ADMIN', 'INSTRUCTOR'), async (req, res, next)
     } catch (err) { next(err); }
 });
 
-// PUT /api/cbt/exams/:id — general update (title, duration, publish, etc.)
+// PUT /api/cbt/exams/:id — general update
 router.put('/exams/:id', requireRole('ADMIN', 'INSTRUCTOR'), async (req, res, next) => {
     try {
-        const { title, instructions, durationMinutes, totalMarks, passMark,
-            startWindow, endWindow, allowReview, isPublished } = req.body;
+        const { title, category, mode, instructions, durationMinutes, totalMarks, passMark,
+            startWindow, endWindow, allowReview, isPublished, topicIds, numQuestions } = req.body;
         const exam = await prisma.cbtExam.update({
             where: { id: req.params.id },
             data: {
                 ...(title !== undefined && { title }),
+                ...(category !== undefined && { category }),
+                ...(mode !== undefined && { mode }),
                 ...(instructions !== undefined && { instructions }),
                 ...(durationMinutes !== undefined && { durationMinutes: Number(durationMinutes) }),
                 ...(totalMarks !== undefined && { totalMarks: Number(totalMarks) }),
@@ -155,8 +247,37 @@ router.put('/exams/:id', requireRole('ADMIN', 'INSTRUCTOR'), async (req, res, ne
                 ...(endWindow !== undefined && { endWindow: endWindow ? new Date(endWindow) : null }),
                 ...(allowReview !== undefined && { allowReview: Boolean(allowReview) }),
                 ...(isPublished !== undefined && { isPublished: Boolean(isPublished) }),
+                ...(topicIds !== undefined && { topicIds }),
+                ...(numQuestions !== undefined && { numQuestions: Number(numQuestions) }),
             },
         });
+
+        // If pooling settings changed, we might want to re-pool
+        // For now, let's keep it simple: if topicIds or numQuestions are provided in PUT, we RE-POOL
+        if ((topicIds !== undefined || numQuestions !== undefined) && exam.mode === 'CBT') {
+            const finalTopicIds = topicIds || exam.topicIds || [];
+            const finalNumQuestions = numQuestions !== undefined ? Number(numQuestions) : (exam.numQuestions || 0);
+
+            if (finalTopicIds.length > 0 && finalNumQuestions > 0) {
+                const pool = await prisma.cbtQuestion.findMany({
+                    where: {
+                        courseId: exam.courseId,
+                        topicId: { in: finalTopicIds },
+                        isActive: true
+                    },
+                    select: { id: true }
+                });
+
+                const shuffled = pool.sort(() => 0.5 - Math.random());
+                const finalQuestionIds = shuffled.slice(0, finalNumQuestions).map(q => q.id);
+
+                await prisma.cbtExamQuestion.deleteMany({ where: { examId: exam.id } });
+                await prisma.cbtExamQuestion.createMany({
+                    data: finalQuestionIds.map((qId, idx) => ({ examId: exam.id, questionId: qId, order: idx + 1 })),
+                });
+            }
+        }
+
         res.json({ exam });
     } catch (err) { next(err); }
 });
@@ -205,6 +326,23 @@ router.post('/exams/:id/start', requireRole('STUDENT'), async (req, res, next) =
         });
         if (!exam) return res.status(404).json({ error: 'Exam not found' });
         if (!exam.isPublished) return res.status(403).json({ error: 'Exam is not yet available' });
+
+        // ATTENDANCE GUARD: Check for active attendance session
+        const activeSession = await prisma.attendanceSession.findFirst({
+            where: {
+                courseId: exam.courseId,
+                semesterId: exam.semesterId,
+                isActive: true,
+                AND: [
+                    { OR: [{ departmentId: req.user.student.departmentId }, { departmentId: null }] },
+                    { OR: [{ level: req.user.student.level }, { level: null }] }
+                ]
+            }
+        });
+
+        if (!activeSession) {
+            return res.status(403).json({ error: 'Attendance session not started. Please wait for the instructor or admin to start the session.' });
+        }
 
         // Check time window
         const now = new Date();

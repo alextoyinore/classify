@@ -56,14 +56,14 @@ enum SyncStatus {
 // ─── Core User / Auth ─────────────────────────────────────────────────────────
 
 model User {
-  id         String   @id @default(cuid())
-  email      String   @unique
-  password   String
-  role       Role
-  isActive   Boolean  @default(true)
-  lastLogin  DateTime?
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id        String    @id @default(cuid())
+  email     String    @unique
+  password  String
+  role      Role
+  isActive  Boolean   @default(true)
+  lastLogin DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 
   student    Student?
   instructor Instructor?
@@ -86,32 +86,32 @@ model Admin {
 // ─── Student ──────────────────────────────────────────────────────────────────
 
 model Student {
-  id            String   @id @default(cuid())
-  userId        String   @unique
-  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  matricNumber  String   @unique
-  firstName     String
-  lastName      String
-  middleName    String?
-  gender        Gender
-  dateOfBirth   DateTime?
-  phone         String?
-  address       String?
-  avatarUrl     String?
-  departmentId  String?
-  department    Department? @relation(fields: [departmentId], references: [id])
-  facultyId     String?
-  faculty       Faculty?    @relation(fields: [facultyId], references: [id])
-  level         Int      @default(100)   // 100, 200, 300, 400, 500
-  entryYear     String   // e.g. "2023"
-  isActive      Boolean  @default(true)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id           String      @id @default(cuid())
+  userId       String      @unique
+  user         User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  matricNumber String      @unique
+  firstName    String
+  lastName     String
+  middleName   String?
+  gender       Gender
+  dateOfBirth  DateTime?
+  phone        String?
+  address      String?
+  avatarUrl    String?
+  departmentId String?
+  department   Department? @relation(fields: [departmentId], references: [id])
+  facultyId    String?
+  faculty      Faculty?    @relation(fields: [facultyId], references: [id])
+  level        Int         @default(100) // 100, 200, 300, 400, 500
+  entryYear    String // e.g. "2023"
+  isActive     Boolean     @default(true)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
 
-  enrollments   Enrollment[]
-  attendances   Attendance[]
-  scores        Score[]
-  cbtAttempts   CbtAttempt[]
+  enrollments Enrollment[]
+  attendances Attendance[]
+  scores      Score[]
+  cbtAttempts CbtAttempt[]
 
   @@index([departmentId])
   @@index([facultyId])
@@ -122,22 +122,22 @@ model Student {
 // ─── Instructor ───────────────────────────────────────────────────────────────
 
 model Instructor {
-  id           String   @id @default(cuid())
-  userId       String   @unique
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  staffId      String   @unique
-  firstName    String
-  lastName     String
-  phone        String?
-  departmentId String?
-  department   Department? @relation(fields: [departmentId], references: [id])
-  facultyId    String?
-  faculty      Faculty?    @relation(fields: [facultyId], references: [id])
-  avatarUrl    String?
+  id            String      @id @default(cuid())
+  userId        String      @unique
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  staffId       String      @unique
+  firstName     String
+  lastName      String
+  phone         String?
+  departmentId  String?
+  department    Department? @relation(fields: [departmentId], references: [id])
+  facultyId     String?
+  faculty       Faculty?    @relation(fields: [facultyId], references: [id])
+  avatarUrl     String?
   qualification String?
-  isActive     Boolean  @default(true)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  isActive      Boolean     @default(true)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
 
   courseAssignments CourseInstructor[]
 }
@@ -145,29 +145,29 @@ model Instructor {
 // ─── Academic Session ─────────────────────────────────────────────────────────
 
 model AcademicSession {
-  id        String   @id @default(cuid())
-  title     String   @unique  // e.g. "2024/2025"
-  isCurrent Boolean  @default(false)
+  id        String    @id @default(cuid())
+  title     String    @unique // e.g. "2024/2025"
+  isCurrent Boolean   @default(false)
   startDate DateTime?
   endDate   DateTime?
-  createdAt DateTime @default(now())
+  createdAt DateTime  @default(now())
 
-  semesters  Semester_[]
+  semesters Semester_[]
 }
 
 model Semester_ {
-  id          String          @id @default(cuid())
-  sessionId   String
-  session     AcademicSession @relation(fields: [sessionId], references: [id])
-  name        Semester
-  isCurrent   Boolean         @default(false)
-  startDate   DateTime?
-  endDate     DateTime?
-  createdAt   DateTime        @default(now())
+  id        String          @id @default(cuid())
+  sessionId String
+  session   AcademicSession @relation(fields: [sessionId], references: [id])
+  name      Semester
+  isCurrent Boolean         @default(false)
+  startDate DateTime?
+  endDate   DateTime?
+  createdAt DateTime        @default(now())
 
-  attendances  Attendance[]
-  exams        Exam[]
-  cbtExams     CbtExam[]
+  attendances    Attendance[]
+  exams          Exam[]
+  cbtExams       CbtExam[]
   activeSessions AttendanceSession[]
 
   @@unique([sessionId, name])
@@ -176,28 +176,42 @@ model Semester_ {
 // ─── Course ───────────────────────────────────────────────────────────────────
 
 model Course {
-  id          String   @id @default(cuid())
-  code        String   @unique  // e.g. "CSC201"
+  id          String       @id @default(cuid())
+  code        String?      @unique // e.g. "CSC201"
   title       String
   description String?
-  creditUnits Int      @default(3)
-  level       Int      @default(100)
-  departmentId  String?
-  department    Department? @relation(fields: [departmentId], references: [id])
-  isActive    Boolean  @default(true)
+  creditUnits Int?
+  levels      Int[]
+  semesters   Semester[]
+  departments Department[]
+  isActive    Boolean      @default(true)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  enrollments    Enrollment[]
+  instructors    CourseInstructor[]
+  attendances    Attendance[]
+  exams          Exam[]
+  cbtExams       CbtExam[]
+  questions      CbtQuestion[]
+  activeSessions AttendanceSession[]
+  topics         CourseTopic[]
+}
+
+model CourseTopic {
+  id          String   @id @default(cuid())
+  courseId    String
+  course      Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  order       Int
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  enrollments      Enrollment[]
-  instructors      CourseInstructor[]
-  attendances      Attendance[]
-  exams            Exam[]
-  cbtExams         CbtExam[]
-  questions        CbtQuestion[]
-  activeSessions   AttendanceSession[]
+  questions CbtQuestion[]
 
-  @@index([departmentId])
-  @@index([level])
+  @@index([courseId])
+  @@index([courseId, order])
 }
 
 model CourseInstructor {
@@ -213,13 +227,13 @@ model CourseInstructor {
 }
 
 model Enrollment {
-  id        String   @id @default(cuid())
-  studentId String
-  student   Student  @relation(fields: [studentId], references: [id])
-  courseId  String
-  course    Course   @relation(fields: [courseId], references: [id])
-  session   String   // e.g. "2024/2025"
-  semester  Semester
+  id         String   @id @default(cuid())
+  studentId  String
+  student    Student  @relation(fields: [studentId], references: [id])
+  courseId   String
+  course     Course   @relation(fields: [courseId], references: [id])
+  session    String // e.g. "2024/2025"
+  semester   Semester
   enrolledAt DateTime @default(now())
 
   @@unique([studentId, courseId, session, semester])
@@ -228,18 +242,18 @@ model Enrollment {
 // ─── Attendance ───────────────────────────────────────────────────────────────
 
 model Attendance {
-  id          String           @id @default(cuid())
-  studentId   String
-  student     Student          @relation(fields: [studentId], references: [id])
-  courseId    String
-  course      Course           @relation(fields: [courseId], references: [id])
-  semesterId  String
-  semester    Semester_        @relation(fields: [semesterId], references: [id])
-  date        DateTime         @db.Date
-  status      AttendanceStatus @default(PRESENT)
-  note        String?
-  markedById  String?          // userId of who marked it
-  createdAt   DateTime         @default(now())
+  id         String           @id @default(cuid())
+  studentId  String
+  student    Student          @relation(fields: [studentId], references: [id])
+  courseId   String
+  course     Course           @relation(fields: [courseId], references: [id])
+  semesterId String
+  semester   Semester_        @relation(fields: [semesterId], references: [id])
+  date       DateTime         @db.Date
+  status     AttendanceStatus @default(PRESENT)
+  note       String?
+  markedById String? // userId of who marked it
+  createdAt  DateTime         @default(now())
 
   @@unique([studentId, courseId, date])
   @@index([courseId, date])
@@ -248,19 +262,19 @@ model Attendance {
 // ─── Examination (Written) ────────────────────────────────────────────────────
 
 model Exam {
-  id          String   @id @default(cuid())
-  courseId    String
-  course      Course   @relation(fields: [courseId], references: [id])
-  semesterId  String
-  semester    Semester_ @relation(fields: [semesterId], references: [id])
-  title       String
-  type        ExamType @default(WRITTEN)
-  examDate    DateTime?
-  totalMarks  Float    @default(100)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id         String    @id @default(cuid())
+  courseId   String
+  course     Course    @relation(fields: [courseId], references: [id])
+  semesterId String
+  semester   Semester_ @relation(fields: [semesterId], references: [id])
+  title      String
+  type       ExamType  @default(WRITTEN)
+  examDate   DateTime?
+  totalMarks Float     @default(100)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
 
-  scores      Score[]
+  scores Score[]
 }
 
 model Score {
@@ -270,7 +284,7 @@ model Score {
   studentId String
   student   Student  @relation(fields: [studentId], references: [id])
   score     Float
-  grade     String?   // auto-computed: A, B, C, D, F
+  grade     String? // auto-computed: A, B, C, D, F
   remark    String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -284,16 +298,18 @@ model CbtQuestion {
   id            String          @id @default(cuid())
   courseId      String
   course        Course          @relation(fields: [courseId], references: [id])
+  topicId       String?
+  topic         CourseTopic?    @relation(fields: [topicId], references: [id])
   type          CbtQuestionType @default(MULTIPLE_CHOICE)
   questionText  String
   optionA       String
   optionB       String
   optionC       String
   optionD       String
-  correctOption String          // "A", "B", "C", or "D"
-  explanation   String?         // shown after exam
+  correctOption String // "A", "B", "C", or "D"
+  explanation   String? // shown after exam
   marks         Float           @default(1)
-  difficulty    String?         // "EASY", "MEDIUM", "HARD"
+  difficulty    String? // "EASY", "MEDIUM", "HARD"
   isActive      Boolean         @default(true)
   createdAt     DateTime        @default(now())
   updatedAt     DateTime        @updatedAt
@@ -309,19 +325,23 @@ model CbtExam {
   semesterId      String
   semester        Semester_ @relation(fields: [semesterId], references: [id])
   title           String
+  category        String?   @default("EXAM") // "TEST", "EXAM"
+  mode            String?   @default("CBT")  // "CBT", "WRITTEN", "PRACTICAL"
   instructions    String?
+  topicIds        String[]  @default([])
+  numQuestions    Int?      @default(0)
   durationMinutes Int       @default(60)
   totalMarks      Float     @default(100)
   passMark        Float     @default(50)
   isPublished     Boolean   @default(false)
-  startWindow     DateTime?  // earliest a student can start
-  endWindow       DateTime?  // deadline — no new attempts after this
+  startWindow     DateTime? // earliest a student can start
+  endWindow       DateTime? // deadline — no new attempts after this
   allowReview     Boolean   @default(true)
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
-  questions  CbtExamQuestion[]
-  attempts   CbtAttempt[]
+  questions CbtExamQuestion[]
+  attempts  CbtAttempt[]
 }
 
 model CbtExamQuestion {
@@ -353,18 +373,18 @@ model CbtAttempt {
 
   answers CbtAnswer[]
 
-  @@unique([examId, studentId])  // one attempt per student per exam
+  @@unique([examId, studentId]) // one attempt per student per exam
 }
 
 model CbtAnswer {
-  id          String      @id @default(cuid())
-  attemptId   String
-  attempt     CbtAttempt  @relation(fields: [attemptId], references: [id])
-  questionId  String
-  question    CbtQuestion @relation(fields: [questionId], references: [id])
-  selected    String?     // "A", "B", "C", "D" or null if skipped
-  isCorrect   Boolean?
-  createdAt   DateTime    @default(now())
+  id         String      @id @default(cuid())
+  attemptId  String
+  attempt    CbtAttempt  @relation(fields: [attemptId], references: [id])
+  questionId String
+  question   CbtQuestion @relation(fields: [questionId], references: [id])
+  selected   String? // "A", "B", "C", "D" or null if skipped
+  isCorrect  Boolean?
+  createdAt  DateTime    @default(now())
 
   @@unique([attemptId, questionId])
 }
@@ -373,7 +393,7 @@ model CbtAnswer {
 
 model SyncLog {
   id          String     @id @default(cuid())
-  triggeredBy String     // userId
+  triggeredBy String // userId
   status      SyncStatus @default(PENDING)
   recordCount Int?
   errorMsg    String?
@@ -413,16 +433,16 @@ model Faculty {
 }
 
 model Department {
-  id          String   @id @default(cuid())
-  name        String
-  facultyId   String
-  faculty     Faculty  @relation(fields: [facultyId], references: [id], onDelete: Cascade)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id        String   @id @default(cuid())
+  name      String
+  facultyId String
+  faculty   Faculty  @relation(fields: [facultyId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  students    Student[]
-  instructors Instructor[]
-  courses     Course[]
+  students           Student[]
+  instructors        Instructor[]
+  courses            Course[]
   attendanceSessions AttendanceSession[]
 
   @@unique([facultyId, name])

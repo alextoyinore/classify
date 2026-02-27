@@ -12,7 +12,7 @@ router.get('/', async (req, res, next) => {
         const { search, department, page = 1, limit = 20 } = req.query;
         const skip = (Number(page) - 1) * Number(limit);
         const where = {
-            ...(department && { department }),
+            ...(department && { departmentId: department }),
             ...(search && {
                 OR: [
                     { firstName: { contains: search, mode: 'insensitive' } },
@@ -28,6 +28,8 @@ router.get('/', async (req, res, next) => {
                 include: {
                     user: { select: { email: true, isActive: true, lastLogin: true } },
                     courseAssignments: { include: { course: { select: { id: true, code: true, title: true } } } },
+                    department: { select: { name: true } },
+                    faculty: { select: { name: true } }
                 },
             }),
             prisma.instructor.count({ where }),
@@ -54,8 +56,8 @@ router.get('/:id', async (req, res, next) => {
 // POST /api/instructors
 router.post('/', requireRole('ADMIN'), async (req, res, next) => {
     try {
-        const { email, password, firstName, lastName, staffId, department, faculty, phone, qualification } = req.body;
-        if (!email || !firstName || !lastName || !staffId || !department)
+        const { email, password, firstName, lastName, staffId, departmentId, facultyId, phone, qualification } = req.body;
+        if (!email || !firstName || !lastName || !staffId || !departmentId)
             return res.status(400).json({ error: 'Required fields missing' });
 
         const hashed = await bcrypt.hash(password || staffId, 12);
@@ -64,7 +66,9 @@ router.post('/', requireRole('ADMIN'), async (req, res, next) => {
                 email: email.toLowerCase().trim(),
                 password: hashed,
                 role: 'INSTRUCTOR',
-                instructor: { create: { firstName, lastName, staffId, department, faculty, phone, qualification } },
+                instructor: {
+                    create: { firstName, lastName, staffId, departmentId, facultyId, phone, qualification }
+                },
             },
             include: { instructor: true },
         });
@@ -78,10 +82,10 @@ router.post('/', requireRole('ADMIN'), async (req, res, next) => {
 // PUT /api/instructors/:id
 router.put('/:id', requireRole('ADMIN'), async (req, res, next) => {
     try {
-        const { firstName, lastName, phone, department, faculty, qualification, avatarUrl, isActive } = req.body;
+        const { firstName, lastName, phone, departmentId, facultyId, qualification, avatarUrl, isActive } = req.body;
         const instructor = await prisma.instructor.update({
             where: { id: req.params.id },
-            data: { firstName, lastName, phone, department, faculty, qualification, avatarUrl },
+            data: { firstName, lastName, phone, departmentId, facultyId, qualification, avatarUrl },
         });
         if (typeof isActive === 'boolean')
             await prisma.user.update({ where: { id: instructor.userId }, data: { isActive } });

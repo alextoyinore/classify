@@ -5,6 +5,17 @@ import { authenticate, requireRole } from '../middleware/auth.js';
 const router = Router();
 router.use(authenticate);
 
+// GET /api/sessions/current — returns the current active semester
+router.get('/current', async (req, res, next) => {
+    try {
+        const semester = await prisma.semester_.findFirst({
+            where: { isCurrent: true },
+            include: { session: { select: { title: true, isCurrent: true } } }
+        });
+        res.json(semester);
+    } catch (err) { next(err); }
+});
+
 // GET /api/sessions — returns flat list of semesters (for dropdowns)
 router.get('/', async (req, res, next) => {
     try {

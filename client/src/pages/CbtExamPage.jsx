@@ -94,10 +94,20 @@ export default function CbtExamPage() {
                                     <span className="badge badge-blue">{ex.durationMinutes} min</span>
                                     <span className="badge badge-amber">{ex.questions?.length || 0} questions</span>
                                     <span className="badge badge-muted">Pass: {ex.passMark}%</span>
+                                    {ex.isSessionActive ? (
+                                        <span className="badge badge-green">Session Active</span>
+                                    ) : (
+                                        <span className="badge badge-red">Session Not Started</span>
+                                    )}
                                 </div>
                                 {ex.instructions && <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginBottom: 12 }}>{ex.instructions}</p>}
-                                <button className="btn btn-primary w-full" style={{ justifyContent: 'center' }} onClick={() => startExam(ex)}>
-                                    Start Exam
+                                <button
+                                    className="btn btn-primary w-full"
+                                    style={{ justifyContent: 'center', opacity: ex.isSessionActive ? 1 : 0.6 }}
+                                    onClick={() => ex.isSessionActive && startExam(ex)}
+                                    disabled={!ex.isSessionActive}
+                                >
+                                    {ex.isSessionActive ? 'Start Exam' : 'Wait for Session'}
                                 </button>
                             </div>
                         ))}

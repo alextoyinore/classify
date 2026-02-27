@@ -34,16 +34,21 @@ export default function AttendancePage() {
     useEffect(() => {
         (async () => {
             try {
-                const [cRes, sRes, liveRes, dRes] = await Promise.all([
+                const [cRes, sRes, liveRes, dRes, curRes] = await Promise.all([
                     api.get('/courses'),
                     api.get('/sessions'),
                     api.get('/attendance/active-sessions'),
-                    api.get('/departments')
+                    api.get('/departments'),
+                    api.get('/sessions/current')
                 ]);
                 setCourses(cRes.data.data || []);
                 setSessions(sRes.data || []);
                 setActiveSessions(liveRes.data || []);
                 setDepts(dRes.data || []);
+                if (curRes.data) {
+                    setMarkSession(curRes.data.id);
+                    setSessSemester(curRes.data.id);
+                }
             } catch { }
         })();
     }, []);

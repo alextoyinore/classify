@@ -12,7 +12,7 @@ router.get('/', requireRole('ADMIN', 'INSTRUCTOR'), async (req, res, next) => {
         const { search, department, level, page = 1, limit = 20 } = req.query;
         const skip = (Number(page) - 1) * Number(limit);
         const where = {
-            ...(department && { department }),
+            ...(department && { departmentId: department }),
             ...(level && { level: Number(level) }),
             ...(search && {
                 OR: [
@@ -23,7 +23,15 @@ router.get('/', requireRole('ADMIN', 'INSTRUCTOR'), async (req, res, next) => {
             }),
         };
         const [students, total] = await Promise.all([
-            prisma.student.findMany({ where, skip, take: Number(limit), orderBy: { lastName: 'asc' }, include: { user: { select: { email: true, isActive: true, lastLogin: true } } } }),
+            prisma.student.findMany({
+                where, skip, take: Number(limit),
+                orderBy: { lastName: 'asc' },
+                include: {
+                    user: { select: { email: true, isActive: true, lastLogin: true } },
+                    department: { select: { name: true } },
+                    faculty: { select: { name: true } }
+                }
+            }),
             prisma.student.count({ where }),
         ]);
         res.json({ data: students, total, page: Number(page), pages: Math.ceil(total / Number(limit)) });
@@ -50,8 +58,8 @@ router.get('/:id', requireRole('ADMIN', 'INSTRUCTOR'), async (req, res, next) =>
 // POST /api/students — create student + user account
 router.post('/', requireRole('ADMIN'), async (req, res, next) => {
     try {
-        const { email, password, firstName, lastName, middleName, matricNumber, gender, dateOfBirth, phone, address, department, faculty, level, entryYear } = req.body;
-        if (!email || !firstName || !lastName || !matricNumber || !department || !gender)
+        const { email, password, firstName, lastName, middleName, matricNumber, gender, dateOfBirth, phone, address, departmentId, facultyId, level, entryYear } = req.body;
+        if (!email || !firstName || !lastName || !matricNumber || !departmentId || !gender)
             return res.status(400).json({ error: 'Required fields missing' });
 
         const hashed = await bcrypt.hash(password || matricNumber, 12);
@@ -61,7 +69,13 @@ router.post('/', requireRole('ADMIN'), async (req, res, next) => {
                 password: hashed,
                 role: 'STUDENT',
                 student: {
-                    create: { firstName, lastName, middleName, matricNumber, gender, dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : null, phone, address, department, faculty, level: Number(level) || 100, entryYear: entryYear || String(new Date().getFullYear()) },
+                    create: {
+                        firstName, lastName, middleName, matricNumber, gender,
+                        dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : null,
+                        phone, address, departmentId, facultyId,
+                        level: Number(level) || 100,
+                        entryYear: entryYear || String(new Date().getFullYear())
+                    },
                 },
             },
             include: { student: true },
@@ -76,10 +90,15 @@ router.post('/', requireRole('ADMIN'), async (req, res, next) => {
 // PUT /api/students/:id
 router.put('/:id', requireRole('ADMIN'), async (req, res, next) => {
     try {
-        const { firstName, lastName, middleName, phone, address, department, faculty, level, avatarUrl, isActive } = req.body;
+        const { firstName, lastName, middleName, phone, address, departmentId, facultyId, level, avatarUrl, isActive } = req.body;
         const student = await prisma.student.update({
             where: { id: req.params.id },
-            data: { firstName, lastName, middleName, phone, address, department, faculty, level: level ? Number(level) : undefined, avatarUrl },
+            data: {
+                firstName, lastName, middleName, phone, address,
+                departmentId, facultyId,
+                level: level ? Number(level) : undefined,
+                avatarUrl
+            },
         });
         if (typeof isActive === 'boolean') {
             await prisma.user.update({ where: { id: student.userId }, data: { isActive } });

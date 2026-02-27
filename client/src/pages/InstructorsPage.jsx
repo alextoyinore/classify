@@ -3,8 +3,8 @@ import { Plus, Search, Edit2, Trash2, X } from 'lucide-react';
 import api from '../api';
 import { useToast } from '../context/ToastContext';
 
-const DEPTS = ['Computer Science', 'Information Technology', 'Electrical Engineering', 'Mathematics', 'Physics', 'Business Administration', 'Accounting', 'Economics'];
-const empty = { firstName: '', lastName: '', email: '', password: '', staffId: '', phone: '', department: 'Computer Science', faculty: '', qualification: '' };
+
+const empty = { firstName: '', lastName: '', email: '', password: '', staffId: '', phone: '', departmentId: '', facultyId: '', facultyName: '', qualification: '' };
 
 export default function InstructorsPage() {
     const toast = useToast();
@@ -13,6 +13,8 @@ export default function InstructorsPage() {
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
     const [page, setPage] = useState(1);
+    const [depts, setDepts] = useState([]);
+    const [facs, setFacs] = useState([]);
     const limit = 20;
 
     const [modal, setModal] = useState(null);
@@ -22,9 +24,15 @@ export default function InstructorsPage() {
     const load = async () => {
         setLoading(true);
         try {
-            const { data } = await api.get('/instructors', { params: { page, limit, search } });
-            setInstructors(data.data);
-            setTotal(data.total);
+            const [{ data: iData }, { data: dData }, { data: fData }] = await Promise.all([
+                api.get('/instructors', { params: { page, limit, search } }),
+                api.get('/departments'),
+                api.get('/faculties')
+            ]);
+            setInstructors(iData.data);
+            setTotal(iData.total);
+            setDepts(dData || []);
+            setFacs(fData || []);
         } catch { }
         setLoading(false);
     };
@@ -35,7 +43,10 @@ export default function InstructorsPage() {
     const openEdit = (i) => {
         setForm({
             firstName: i.firstName, lastName: i.lastName, email: i.user?.email || '', password: '',
-            staffId: i.staffId, phone: i.phone || '', department: i.department, faculty: i.faculty || '',
+            staffId: i.staffId, phone: i.phone || '',
+            departmentId: i.departmentId || '',
+            facultyId: i.facultyId || '',
+            facultyName: i.faculty?.name || '',
             qualification: i.qualification || '', _id: i.id
         });
         setModal('edit');
@@ -87,7 +98,7 @@ export default function InstructorsPage() {
                                         <tr key={i.id}>
                                             <td className="font-600">{i.firstName} {i.lastName}</td>
                                             <td className="font-mono text-082 text-muted">{i.staffId}</td>
-                                            <td className="text-085">{i.department}</td>
+                                            <td className="text-085">{i.department?.name || '—'}</td>
                                             <td className="text-082 text-muted">{i.qualification || '—'}</td>
                                             <td className="text-08 text-muted">{i.user?.email}</td>
                                             <td><span className={`badge ${i.isActive ? 'badge-green' : 'badge-red'}`}>{i.isActive ? 'Active' : 'Inactive'}</span></td>
@@ -135,11 +146,21 @@ export default function InstructorsPage() {
                                 </div>
                                 <div className="form-row">
                                     <div className="form-group"><label>Department *</label>
-                                        <select required value={form.department} onChange={e => setForm(f => ({ ...f, department: e.target.value }))}>
-                                            {DEPTS.map(d => <option key={d}>{d}</option>)}
+                                        <select required value={form.departmentId} onChange={e => {
+                                            const dId = e.target.value;
+                                            const dObj = depts.find(d => d.id === dId);
+                                            setForm(f => ({
+                                                ...f,
+                                                departmentId: dId,
+                                                facultyId: dObj?.facultyId || '',
+                                                facultyName: dObj?.faculty?.name || ''
+                                            }));
+                                        }}>
+                                            <option value="">Select Department</option>
+                                            {depts.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
                                         </select>
                                     </div>
-                                    <div className="form-group"><label>Faculty</label><input value={form.faculty} onChange={e => setForm(f => ({ ...f, faculty: e.target.value }))} /></div>
+                                    <div className="form-group"><label>Faculty</label><input readOnly value={form.facultyName} /></div>
                                 </div>
                                 <div className="form-group"><label>Qualification</label><input placeholder="e.g. MSc Computer Science" value={form.qualification} onChange={e => setForm(f => ({ ...f, qualification: e.target.value }))} /></div>
                             </div>

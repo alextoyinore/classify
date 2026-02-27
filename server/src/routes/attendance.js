@@ -61,28 +61,51 @@ router.get('/sessions', requireRole('ADMIN', 'INSTRUCTOR'), async (req, res, nex
 // GET /api/attendance/active-sessions — Check for active class sessions
 router.get('/active-sessions', async (req, res, next) => {
     try {
-        // Students find active sessions for their enrolled courses AND matching their dept/level
-        const where = req.user.role === 'STUDENT' ? {
-            isActive: true,
-            course: { enrollments: { some: { studentId: req.user.student.id } } },
-            OR: [
-                { departmentId: req.user.student.departmentId },
-                { departmentId: null }
-            ],
-            OR: [
-                { level: req.user.student.level },
-                { level: null }
-            ]
-        } : { isActive: true };
+        if (req.user.role !== 'STUDENT') {
+            const sessions = await prisma.attendanceSession.findMany({
+                where: { isActive: true },
+                include: {
+                    course: { select: { code: true, title: true } },
+                    department: { select: { name: true } }
+                }
+            });
+            return res.json(sessions);
+        }
 
+        const student = req.user.student;
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        // 1. Find sessions that ARE active and MATCH student dept/level
         const sessions = await prisma.attendanceSession.findMany({
-            where,
+            where: {
+                isActive: true,
+                course: { enrollments: { some: { studentId: student.id } } },
+                AND: [
+                    { OR: [{ departmentId: student.departmentId }, { departmentId: null }] },
+                    { OR: [{ level: student.level }, { level: null }] }
+                ]
+            },
             include: {
                 course: { select: { code: true, title: true } },
                 department: { select: { name: true } }
             }
         });
-        res.json(sessions);
+
+        // 2. Filter out sessions where the student has ALREADY marked attendance for today
+        const attendanceRecords = await prisma.attendance.findMany({
+            where: {
+                studentId: student.id,
+                date: today,
+                courseId: { in: sessions.map(s => s.courseId) }
+            },
+            select: { courseId: true }
+        });
+
+        const attendedCourseIds = new Set(attendanceRecords.map(r => r.courseId));
+        const filteredSessions = sessions.filter(s => !attendedCourseIds.has(s.courseId));
+
+        res.json(filteredSessions);
     } catch (err) { next(err); }
 });
 

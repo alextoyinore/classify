@@ -427,7 +427,7 @@ main {
 }
 
 .log-view {
-    height: 380px;
+    max-height: 380px;
     background: var(--bg-log);
     color: #e2e8f0;
     padding: 16px;

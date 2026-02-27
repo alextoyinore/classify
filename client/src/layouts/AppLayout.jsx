@@ -1,7 +1,7 @@
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
     LayoutDashboard, Users, UserCheck, BookOpen, ClipboardCheck,
-    FileText, Monitor, Cloud, Settings, Server, LogOut, GraduationCap,
+    FileText, Monitor, Cloud, Settings, LogOut, GraduationCap,
     ChevronRight, User, Building2, Calendar
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -30,14 +30,13 @@ const nav = [
     },
     {
         section: 'CBT', items: [
-            { to: '/cbt/admin', label: 'CBT Admin', icon: Monitor, roles: ['ADMIN', 'INSTRUCTOR'] },
+            { to: '/cbt/admin', label: 'Question Bank', icon: Monitor, roles: ['ADMIN', 'INSTRUCTOR'] },
             { to: '/cbt/exam', label: 'My Exams', icon: GraduationCap, roles: ['STUDENT'] },
         ]
     },
     {
         section: 'System', items: [
             { to: '/sync', label: 'Cloud Sync', icon: Cloud, roles: ['ADMIN'] },
-            { to: '/server-control', label: 'Server Control', icon: Server, roles: ['ADMIN'] },
             { to: '/settings', label: 'Settings', icon: Settings, roles: ['ADMIN'] },
         ]
     },
