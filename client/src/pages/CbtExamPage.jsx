@@ -220,7 +220,7 @@ export default function CbtExamPage() {
                     }} title="Save progress and return to dashboard">
                         Pause & Exit
                     </button>
-                    <button className="btn btn-primary" style={{ background: 'var(--danger)', borderColor: 'var(--danger)' }} onClick={() => handleSubmit()} disabled={submitting}>
+                    <button className="btn btn-primary" onClick={() => handleSubmit()} disabled={submitting}>
                         {submitting ? 'Submitting…' : 'Submit Exam'}
                     </button>
                 </div>
@@ -337,6 +337,7 @@ export default function CbtExamPage() {
                             </div>
                         ))}
                     </div>
+
                 </div>
             </div>
         </div>

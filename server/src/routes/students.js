@@ -208,13 +208,15 @@ router.post('/', requireRole('ADMIN'), async (req, res, next) => {
 // PUT /api/students/:id
 router.put('/:id', requireRole('ADMIN'), async (req, res, next) => {
     try {
-        const { firstName, lastName, middleName, phone, address, departmentId, facultyId, level, avatarUrl, isActive } = req.body;
+        const { firstName, lastName, middleName, gender, dateOfBirth, phone, address, departmentId, facultyId, level, entryYear, avatarUrl, isActive } = req.body;
         const student = await prisma.student.update({
             where: { id: req.params.id },
             data: {
-                firstName, lastName, middleName, phone, address,
-                departmentId, facultyId,
+                firstName, lastName, middleName, gender,
+                dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : undefined,
+                phone, address, departmentId, facultyId,
                 level: level ? Number(level) : undefined,
+                entryYear,
                 avatarUrl
             },
         });
