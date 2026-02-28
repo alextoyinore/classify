@@ -60,15 +60,24 @@ router.post('/', requireRole('ADMIN'), async (req, res, next) => {
         if (!email || !firstName || !lastName)
             return res.status(400).json({ error: 'Required fields missing' });
 
+        // Coerce empty strings to null for nullable FK fields
+        const safeData = {
+            firstName,
+            lastName,
+            staffId: staffId || null,
+            departmentId: departmentId || null,
+            facultyId: facultyId || null,
+            phone: phone || null,
+            qualification: qualification || null,
+        };
+
         const hashed = await bcrypt.hash(password || staffId || 'classify123', 12);
         const result = await prisma.user.create({
             data: {
                 email: email.toLowerCase().trim(),
                 password: hashed,
                 role: 'INSTRUCTOR',
-                instructor: {
-                    create: { firstName, lastName, staffId, departmentId, facultyId, phone, qualification }
-                },
+                instructor: { create: safeData },
             },
             include: { instructor: true },
         });
@@ -85,7 +94,15 @@ router.put('/:id', requireRole('ADMIN'), async (req, res, next) => {
         const { firstName, lastName, phone, departmentId, facultyId, qualification, avatarUrl, isActive } = req.body;
         const instructor = await prisma.instructor.update({
             where: { id: req.params.id },
-            data: { firstName, lastName, phone, departmentId, facultyId, qualification, avatarUrl },
+            data: {
+                firstName,
+                lastName,
+                phone: phone || null,
+                departmentId: departmentId || null,
+                facultyId: facultyId || null,
+                qualification: qualification || null,
+                avatarUrl: avatarUrl || null,
+            },
         });
         if (typeof isActive === 'boolean')
             await prisma.user.update({ where: { id: instructor.userId }, data: { isActive } });
