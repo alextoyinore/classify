@@ -141,12 +141,12 @@ export default function InstructorsPage() {
                                     <div className="form-group"><label>{modal === 'add' ? 'Password *' : 'New Password'}</label><input type="password" required={modal === 'add'} value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} /></div>
                                 </div>
                                 <div className="form-row">
-                                    <div className="form-group"><label>Staff ID *</label><input required value={form.staffId} onChange={e => setForm(f => ({ ...f, staffId: e.target.value }))} /></div>
+                                    <div className="form-group"><label>Staff ID</label><input value={form.staffId} onChange={e => setForm(f => ({ ...f, staffId: e.target.value }))} /></div>
                                     <div className="form-group"><label>Phone</label><input value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} /></div>
                                 </div>
                                 <div className="form-row">
-                                    <div className="form-group"><label>Department *</label>
-                                        <select required value={form.departmentId} onChange={e => {
+                                    <div className="form-group"><label>Department</label>
+                                        <select value={form.departmentId} onChange={e => {
                                             const dId = e.target.value;
                                             const dObj = depts.find(d => d.id === dId);
                                             setForm(f => ({

@@ -57,10 +57,10 @@ router.get('/:id', async (req, res, next) => {
 router.post('/', requireRole('ADMIN'), async (req, res, next) => {
     try {
         const { email, password, firstName, lastName, staffId, departmentId, facultyId, phone, qualification } = req.body;
-        if (!email || !firstName || !lastName || !staffId || !departmentId)
+        if (!email || !firstName || !lastName)
             return res.status(400).json({ error: 'Required fields missing' });
 
-        const hashed = await bcrypt.hash(password || staffId, 12);
+        const hashed = await bcrypt.hash(password || staffId || 'classify123', 12);
         const result = await prisma.user.create({
             data: {
                 email: email.toLowerCase().trim(),
