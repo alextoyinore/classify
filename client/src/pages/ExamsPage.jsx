@@ -212,7 +212,7 @@ export default function ExamsPage() {
                                                                     <Settings2 size={14} /> Questions
                                                                 </button>
                                                                 {ex.isPublished && (
-                                                                    <button className="btn btn-secondary btn-sm" onClick={() => navigate('/attendance')}>
+                                                                    <button className="btn btn-secondary btn-sm" onClick={() => navigate(`/exams/${ex.id}/analytics`)}>
                                                                         <BarChart2 size={14} /> Analytics
                                                                     </button>
                                                                 )}
