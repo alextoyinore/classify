@@ -8,7 +8,7 @@ import { useAuth } from '../context/AuthContext';
 export default function CourseDetail() {
     const { id } = useParams();
     const toast = useToast();
-    const { isAdmin, user } = useAuth();
+    const { isAdmin, isInstructor, user } = useAuth();
     const [course, setCourse] = useState(null);
     const [students, setStudents] = useState([]);
     const [tab, setTab] = useState('overview');
@@ -156,7 +156,12 @@ export default function CourseDetail() {
                         <div className="flex gap-8 flex-wrap" style={{ gap: 8 }}>
                             <span className="badge badge-blue">{course.levels?.length ? course.levels.map(l => l + 'L').join(', ') : 'No Levels'}</span>
                             <span className="badge badge-purple">{course.semesters?.length ? course.semesters.join(', ') : 'No Semesters'}</span>
-                            <span className="badge badge-muted">{course.departments?.length ? course.departments.map(d => d.name).join(', ') : 'No Departments'}</span>
+                            <span className="badge badge-muted">
+                                {isAdmin || isInstructor
+                                    ? (course.departments?.length ? course.departments.map(d => d.name).join(', ') : 'No Departments')
+                                    : (course.departments?.find(d => d.id === (user?.profile?.departmentId || user?.profile?.department?.id || user?.student?.departmentId))?.name || 'N/A')
+                                }
+                            </span>
                             <span className="badge badge-amber">{course.creditUnits || 'N/A'} Credits</span>
                             <span className={`badge ${course.isActive ? 'badge-green' : 'badge-red'}`}>{course.isActive ? 'Active' : 'Inactive'}</span>
                         </div>

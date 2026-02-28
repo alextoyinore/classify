@@ -352,9 +352,18 @@ router.post('/exams/:id/start', requireRole('STUDENT'), async (req, res, next) =
         // Check for existing attempt
         const existing = await prisma.cbtAttempt.findUnique({
             where: { examId_studentId: { examId: exam.id, studentId } },
+            include: { answers: true }
         });
         if (existing?.isCompleted) return res.status(409).json({ error: 'You have already completed this exam' });
-        if (existing) return res.json({ attempt: existing, questions: exam.questions.map(q => q.question) });
+
+        if (existing) {
+            return res.json({
+                attempt: existing,
+                questions: exam.questions.map(q => q.question),
+                exam: { title: exam.title, instructions: exam.instructions, durationMinutes: exam.durationMinutes, totalMarks: exam.totalMarks },
+                savedAnswers: existing.answers
+            });
+        }
 
         const attempt = await prisma.cbtAttempt.create({
             data: { examId: exam.id, studentId, ipAddress: req.ip },
@@ -368,32 +377,70 @@ router.post('/exams/:id/start', requireRole('STUDENT'), async (req, res, next) =
     } catch (err) { next(err); }
 });
 
-// POST /api/cbt/attempts/:id/submit — submit answers and auto-grade
-router.post('/attempts/:id/submit', requireRole('STUDENT'), async (req, res, next) => {
+// POST /api/cbt/attempts/:id/save-answer — save single answer, permanent check
+router.post('/attempts/:id/save-answer', requireRole('STUDENT'), async (req, res, next) => {
     try {
-        const { answers } = req.body; // [{ questionId, selected }]
+        const { questionId, selected } = req.body;
         const studentId = req.user.student?.id;
 
         const attempt = await prisma.cbtAttempt.findUnique({
             where: { id: req.params.id },
-            include: { exam: { include: { questions: { include: { question: { select: { id: true, correctOption: true, marks: true } } } } } } },
+            include: {
+                exam: { include: { questions: { where: { questionId }, include: { question: true } } } },
+                answers: { where: { questionId } }
+            }
+        });
+
+        if (!attempt) return res.status(404).json({ error: 'Attempt not found' });
+        if (attempt.studentId !== studentId) return res.status(403).json({ error: 'Unauthorized attempt' });
+        if (attempt.isCompleted) return res.status(403).json({ error: 'Exam already submitted' });
+
+        // Permanent Answer Logic: If an answer exists, it cannot be changed
+        if (attempt.answers.length > 0 && attempt.answers[0].selected !== null) {
+            return res.status(403).json({ error: 'Answer already submitted and cannot be changed' });
+        }
+
+        const question = attempt.exam.questions[0]?.question;
+        if (!question) return res.status(404).json({ error: 'Question not found in this exam' });
+
+        const isCorrect = selected === question.correctOption;
+
+        const answer = await prisma.cbtAnswer.upsert({
+            where: { attemptId_questionId: { attemptId: attempt.id, questionId } },
+            create: { attemptId: attempt.id, questionId, selected, isCorrect },
+            update: { selected, isCorrect }
+        });
+
+        res.json({ success: true, answer });
+    } catch (err) { next(err); }
+});
+
+// POST /api/cbt/attempts/:id/submit — submit answers and auto-grade
+router.post('/attempts/:id/submit', requireRole('STUDENT'), async (req, res, next) => {
+    try {
+        const studentId = req.user.student?.id;
+
+        const attempt = await prisma.cbtAttempt.findUnique({
+            where: { id: req.params.id },
+            include: {
+                exam: { include: { questions: { include: { question: { select: { id: true, correctOption: true, marks: true } } } } } },
+                answers: true
+            },
         });
         if (!attempt) return res.status(404).json({ error: 'Attempt not found' });
         if (attempt.studentId !== studentId) return res.status(403).json({ error: 'Forbidden' });
         if (attempt.isCompleted) return res.status(409).json({ error: 'Already submitted' });
 
-        // Grade answers
+        // Grade finalized answers from DB
         let totalScore = 0;
         const questionMap = Object.fromEntries(attempt.exam.questions.map(q => [q.question.id, q.question]));
 
-        const answerData = answers.map(a => {
-            const question = questionMap[a.questionId];
-            const isCorrect = question && a.selected === question.correctOption;
-            if (isCorrect) totalScore += question.marks;
-            return { attemptId: attempt.id, questionId: a.questionId, selected: a.selected || null, isCorrect: isCorrect || false };
-        });
-
-        await prisma.cbtAnswer.createMany({ data: answerData, skipDuplicates: true });
+        for (const ans of attempt.answers) {
+            const question = questionMap[ans.questionId];
+            if (question && ans.selected === question.correctOption) {
+                totalScore += question.marks;
+            }
+        }
 
         const percentage = (totalScore / attempt.exam.totalMarks) * 100;
         const updatedAttempt = await prisma.cbtAttempt.update({

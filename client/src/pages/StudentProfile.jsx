@@ -64,7 +64,7 @@ export default function StudentProfile() {
                     <h1 style={{ fontSize: '1.4rem', fontWeight: 800, marginBottom: 4 }}>{fullName}</h1>
                     <div className="flex gap-8 flex-wrap" style={{ gap: 8 }}>
                         <span className="badge badge-blue">{s.level}L</span>
-                        <span className="badge badge-muted">{s.department}</span>
+                        <span className="badge badge-muted">{s.department?.name || s.department || '—'}</span>
                         <span className={`badge ${s.isActive ? 'badge-green' : 'badge-red'}`}>{s.isActive ? 'Active' : 'Inactive'}</span>
                         <span className="badge badge-muted" style={{ fontFamily: 'monospace' }}>{s.matricNumber}</span>
                     </div>
@@ -93,7 +93,7 @@ export default function StudentProfile() {
                     <InfoRow icon={MapPin} label="Address" value={s.address} />
                     <InfoRow icon={Calendar} label="Date of Birth" value={s.dateOfBirth ? new Date(s.dateOfBirth).toLocaleDateString() : null} />
                     <InfoRow icon={User} label="Gender" value={s.gender} />
-                    <InfoRow icon={Book} label="Faculty" value={s.faculty} />
+                    <InfoRow icon={Book} label="Faculty" value={s.faculty?.name || s.faculty || '—'} />
                     <InfoRow icon={Award} label="Entry Year" value={s.entryYear} />
                 </div>
             )}
@@ -112,8 +112,8 @@ export default function StudentProfile() {
                                         <td>{a.course?.code} — {a.course?.title}</td>
                                         <td>
                                             <span className={`badge ${a.status === 'PRESENT' ? 'badge-green' :
-                                                    a.status === 'LATE' ? 'badge-amber' :
-                                                        a.status === 'EXCUSED' ? 'badge-blue' : 'badge-red'
+                                                a.status === 'LATE' ? 'badge-amber' :
+                                                    a.status === 'EXCUSED' ? 'badge-blue' : 'badge-red'
                                                 }`}>{a.status}</span>
                                         </td>
                                         <td style={{ color: 'var(--text-secondary)', fontSize: '0.82rem' }}>{a.note || '—'}</td>

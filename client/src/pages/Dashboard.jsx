@@ -122,7 +122,7 @@ export default function Dashboard() {
                                                     </Link>
                                                 </td>
                                                 <td style={{ fontFamily: 'monospace', color: 'var(--text-secondary)' }}>{s.matricNumber}</td>
-                                                <td>{s.department}</td>
+                                                <td>{s.department?.name || '—'}</td>
                                                 <td>{s.level}L</td>
                                                 <td>
                                                     <span className={`badge ${s.isActive ? 'badge-green' : 'badge-red'}`}>

@@ -9,7 +9,7 @@ const empty = { code: '', title: '', description: '', creditUnits: '' };
 
 export default function CoursesPage() {
     const toast = useToast();
-    const { isAdmin, user } = useAuth();
+    const { isAdmin, isInstructor, user } = useAuth();
     const [courses, setCourses] = useState([]);
     const [total, setTotal] = useState(0);
     const [loading, setLoading] = useState(true);
@@ -98,9 +98,9 @@ export default function CoursesPage() {
                                             </td>
                                             <td style={{ fontWeight: 500 }}>{c.title}</td>
                                             <td style={{ fontSize: '0.85rem' }}>
-                                                {isAdmin
+                                                {isAdmin || isInstructor
                                                     ? (c.departments?.map(d => d.name).join(', ') || 'N/A')
-                                                    : (c.departments?.filter(d => d.id === user?.student?.departmentId).map(d => d.name).join(', ') || 'N/A')
+                                                    : (c.departments?.find(d => d.id === (user?.profile?.departmentId || user?.profile?.department?.id || user?.student?.departmentId))?.name || 'N/A')
                                                 }
                                             </td>
                                             <td><span className="badge badge-blue">{c.levels?.map(l => l + 'L').join(', ') || 'N/A'}</span></td>
