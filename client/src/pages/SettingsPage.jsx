@@ -8,6 +8,7 @@ const defaultForm = {
     schoolEmail: '', schoolPhone: '', logoUrl: '',
     currentSession: '', currentSemester: 'FIRST',
     attendanceWeight: 10,
+    examDeletionGraceDays: 3,
 };
 
 export default function SettingsPage() {
@@ -116,6 +117,14 @@ export default function SettingsPage() {
                         <input type="number" placeholder="e.g. 10" value={form.attendanceWeight} onChange={e => setForm(f => ({ ...f, attendanceWeight: Number(e.target.value) }))} />
                         <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: 4 }}>
                             This value is used to calculate the attendance score in the aggregate results.
+                        </p>
+                    </div>
+
+                    <div className="form-group" style={{ marginTop: 20 }}>
+                        <label>Exam Deletion Grace Period (Days)</label>
+                        <input type="number" min={0} max={30} value={form.examDeletionGraceDays} onChange={e => setForm(f => ({ ...f, examDeletionGraceDays: Number(e.target.value) }))} />
+                        <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: 4 }}>
+                            Number of days after scheduling a full wipe before the manual deletion banner appears for admins. Default is 3 days.
                         </p>
                     </div>
                 </div>

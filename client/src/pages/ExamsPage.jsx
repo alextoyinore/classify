@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, X, Edit2, Trash2, FileText, Monitor, Settings2, BarChart2, Check, Calendar } from 'lucide-react';
+import {
+    Plus, Search, Edit2, Trash2, Calendar, BookOpen, Clock, CheckCircle, AlertCircle, X, Check, Filter,
+    ChevronRight, Save, Settings2, BarChart2, AlertTriangle, Monitor, FileText
+} from 'lucide-react';
 import api from '../api';
 import { useToast } from '../context/ToastContext';
 
@@ -20,12 +23,17 @@ export default function ExamsPage() {
     const [sessions, setSessions] = useState([]);
     const [loading, setLoading] = useState(true);
     const [modal, setModal] = useState(null);
+    const [delModal, setDelModal] = useState(null);
+    const [delPass, setDelPass] = useState('');
+    const [delType, setDelType] = useState('archive');
+    const [deleting, setDeleting] = useState(false);
     const [form, setForm] = useState(empty);
     const [currentSemesterId, setCurrentSemesterId] = useState('');
     const [saving, setSaving] = useState(false);
     const [scoreModal, setScoreModal] = useState(null); // { exam, students }
     const [scoreEntries, setScoreEntries] = useState({});
     const [courseTopics, setCourseTopics] = useState([]);
+    const [settings, setSettings] = useState({});
 
     // Question Assignment for CBT
     const [assignModal, setAssignModal] = useState(null); // exam object
@@ -55,7 +63,7 @@ export default function ExamsPage() {
         if (course && semester) {
             const catLabel = form.category || 'TEST';
             const sessionTitle = semester.session?.title || '';
-            const newTitle = `CBT ${catLabel}: ${course.code} - ${semester.name} ${sessionTitle ? `(${sessionTitle})` : ''}`;
+            const newTitle = `CBT ${catLabel}: ${course.code} - ${semester.name}${sessionTitle ? ` (${sessionTitle})` : ''}`;
             if (form.title !== newTitle) {
                 setForm(f => ({ ...f, title: newTitle }));
             }
@@ -65,15 +73,17 @@ export default function ExamsPage() {
     const load = async () => {
         setLoading(true);
         try {
-            const [eRes, cRes, sRes, curRes] = await Promise.all([
+            const [eRes, cRes, sRes, curRes, setRes] = await Promise.all([
                 api.get('/exams'),
                 api.get('/courses'),
                 api.get('/sessions'),
-                api.get('/sessions/current')
+                api.get('/sessions/current'),
+                api.get('/settings')
             ]);
             setExams(eRes.data.data || []);
             setCourses(cRes.data.data || []);
             setSessions(sRes.data || []);
+            setSettings(setRes.data.settings || {});
             if (curRes.data) {
                 setCurrentSemesterId(curRes.data.id);
                 setForm(f => ({ ...f, semesterId: curRes.data.id }));
@@ -121,14 +131,26 @@ export default function ExamsPage() {
         setSaving(false);
     };
 
-    const handleDelete = async (id, title, isCbt = false) => {
-        if (!confirm(`Delete "${title}"?`)) return;
+    const openDelete = (exam) => {
+        setDelModal(exam);
+        setDelPass('');
+        setDelType('archive');
+    };
+
+    const confirmDelete = async () => {
+        if (!delPass) return toast('Password required', 'error');
+        setDeleting(true);
         try {
-            const endpoint = isCbt ? `/cbt/exams/${id}` : `/exams/${id}`;
-            await api.delete(endpoint);
-            toast('Exam deleted');
+            const endpoint = delModal.isCbt ? `/cbt/exams/${delModal.id}` : `/exams/${delModal.id}`;
+            await api.delete(endpoint, { data: { password: delPass, type: delType } });
+            toast(delType === 'archive' ? 'Exam removed from schedule' : 'Deletion scheduled for 24h');
+            setDelModal(null);
             load();
-        } catch (err) { toast(err.response?.data?.error || 'Delete failed', 'error'); }
+        } catch (err) {
+            toast(err.response?.data?.error || 'Action failed', 'error');
+        } finally {
+            setDeleting(false);
+        }
     };
 
     const openScores = async (exam) => {
@@ -253,7 +275,7 @@ export default function ExamsPage() {
                                                                     <Settings2 size={14} /> Questions
                                                                 </button>
                                                                 <button className="btn btn-secondary btn-sm btn-icon" onClick={() => openEdit(ex)}><Edit2 size={14} /></button>
-                                                                <button className="btn btn-danger btn-sm btn-icon" onClick={() => handleDelete(ex.id, ex.title, ex.isCbt)}><Trash2 size={14} /></button>
+                                                                <button className="btn btn-danger btn-sm btn-icon" onClick={() => openDelete(ex)}><Trash2 size={14} /></button>
                                                                 {ex.isPublished && (
                                                                     <button className="btn btn-secondary btn-sm" onClick={() => navigate(`/exams/${ex.id}/analytics`)}>
                                                                         <BarChart2 size={14} /> Analytics
@@ -264,7 +286,7 @@ export default function ExamsPage() {
                                                             <>
                                                                 <button className="btn btn-amber btn-sm" onClick={() => openScores(ex)}>Scores</button>
                                                                 <button className="btn btn-secondary btn-sm btn-icon" onClick={() => openEdit(ex)}><Edit2 size={14} /></button>
-                                                                <button className="btn btn-danger btn-sm btn-icon" onClick={() => handleDelete(ex.id, ex.title)}><Trash2 size={14} /></button>
+                                                                <button className="btn btn-danger btn-sm btn-icon" onClick={() => openDelete(ex)}><Trash2 size={14} /></button>
                                                             </>
                                                         )}
                                                     </div>
@@ -571,6 +593,74 @@ export default function ExamsPage() {
                         <div className="modal-footer">
                             <button className="btn btn-secondary" onClick={() => setAssignModal(null)}>Cancel</button>
                             <button className="btn btn-primary" onClick={handleAssign}>Save Selection</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+            {/* Deletion Confirmation Modal */}
+            {delModal && (
+                <div className="modal-backdrop" onClick={() => !deleting && setDelModal(null)}>
+                    <div className="modal" style={{ maxWidth: 480 }} onClick={e => e.stopPropagation()}>
+                        <div className="modal-header">
+                            <span className="modal-title">Confirm Deletion: {delModal.title}</span>
+                            <button className="btn btn-secondary btn-sm btn-icon" onClick={() => setDelModal(null)} disabled={deleting}><X size={16} /></button>
+                        </div>
+                        <div className="modal-body">
+                            <div className="alert alert-warning mb-20" style={{ background: 'var(--amber-dim)', border: '1px solid var(--border)', color: 'var(--warning)', padding: '12px', borderRadius: '8px', fontSize: '0.85rem' }}>
+                                <div className="flex gap-8">
+                                    <AlertTriangle size={18} />
+                                    <div>
+                                        <strong>Heavy Action:</strong> Deleting an exam is a significant administrative step. Please choose your method carefully.
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="mb-20">
+                                <label className="block mb-8 font-bold">Select Deletion Method:</label>
+                                <div className="flex flex-column gap-12">
+                                    <label className={`card card-sm clickable ${delType === 'archive' ? 'selected' : ''}`} style={{ borderColor: delType === 'archive' ? 'var(--accent)' : 'var(--border)', cursor: 'pointer', background: delType === 'archive' ? 'var(--accent-dim)' : 'var(--bg-card)', padding: '16px' }}>
+                                        <div className="flex items-center gap-12">
+                                            <input type="radio" name="delType" value="archive" checked={delType === 'archive'} onChange={() => setDelType('archive')} style={{ display: 'none' }} />
+                                            <div>
+                                                <div style={{ fontWeight: 600, fontSize: '0.95rem' }}>Remove from Schedule (Keep Results)</div>
+                                                <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: 4 }}>Exams will be hidden from students, but all scores and attempts will be preserved.</div>
+                                            </div>
+                                        </div>
+                                    </label>
+
+                                    <label className={`card card-sm clickable ${delType === 'full' ? 'selected' : ''}`} style={{ borderColor: delType === 'full' ? 'var(--danger)' : 'var(--border)', cursor: 'pointer', background: delType === 'full' ? 'var(--danger-dim)' : 'var(--bg-card)', padding: '16px' }}>
+                                        <div className="flex items-center gap-12">
+                                            <input type="radio" name="delType" value="full" checked={delType === 'full'} onChange={() => setDelType('full')} style={{ display: 'none' }} />
+                                            <div>
+                                                <div style={{ fontWeight: 600, fontSize: '0.95rem', color: 'var(--danger)' }}>Permanent Wipe (Delete Everything)</div>
+                                                <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: 4 }}>
+                                                    All scores and student attempts will be deleted.
+                                                    <strong> Wait period: {settings.examDeletionGraceDays || 3} days.</strong>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block mb-8 font-bold">Admin Password Confirmation:</label>
+                                <input
+                                    type="password"
+                                    className="input w-full"
+                                    placeholder="Enter your password to confirm"
+                                    value={delPass}
+                                    onChange={e => setDelPass(e.target.value)}
+                                    onKeyDown={e => e.key === 'Enter' && delPass && confirmDelete()}
+                                    disabled={deleting}
+                                />
+                            </div>
+                        </div>
+                        <div className="modal-footer">
+                            <button className="btn btn-secondary" onClick={() => setDelModal(null)} disabled={deleting}>Cancel</button>
+                            <button className="btn btn-danger" onClick={confirmDelete} disabled={deleting || !delPass}>
+                                {deleting ? 'Processing...' : delType === 'archive' ? 'Archive Exam' : 'Schedule Full Delete'}
+                            </button>
                         </div>
                     </div>
                 </div>

@@ -22,17 +22,18 @@ const defaultSettings = {
     currentSession: process.env.CURRENT_SESSION || '2024/2025',
     currentSemester: process.env.CURRENT_SEMESTER || 'FIRST',
     attendanceWeight: 10,
+    examDeletionGraceDays: 3,
     updatedAt: new Date().toISOString(),
 };
 
-const readSettings = () => {
+export const readSettings = () => {
     try {
         if (existsSync(SETTINGS_FILE)) return JSON.parse(readFileSync(SETTINGS_FILE, 'utf8'));
     } catch { }
     return defaultSettings;
 };
 
-const writeSettings = (data) => {
+export const writeSettings = (data) => {
     try {
         const dir = join(__dirname, '../../data');
         if (!existsSync(dir)) { import('fs').then(fs => fs.mkdirSync(dir, { recursive: true })); }

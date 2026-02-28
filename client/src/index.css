@@ -139,10 +139,16 @@ ul {
 
 /* ─── Layout ────────────────────────────────────────────── */
 .app-shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.app-main-layout {
   display: grid;
   grid-template-columns: var(--sidebar-w) 1fr;
   grid-template-rows: var(--topbar-h) 1fr;
-  min-height: 100vh;
+  flex: 1;
 }
 
 .topbar {
@@ -499,6 +505,53 @@ tbody td {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.025em;
+}
+
+
+.deletion-banner {
+  background: var(--danger);
+  color: white;
+  padding: 12px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  font-size: 0.9rem;
+  z-index: 10000;
+  border-bottom: 2px solid rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 12px rgba(220, 53, 69, 0.2);
+}
+
+.banner-content {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.banner-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.btn-banner-confirm {
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: white;
+  padding: 4px 12px;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s;
+}
+
+.btn-banner-confirm:hover {
+  background: white;
+  color: var(--danger);
+  transform: translateY(-1px);
 }
 
 /* ─── Form Elements ──────────────────────────────────────── */

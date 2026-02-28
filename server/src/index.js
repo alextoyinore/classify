@@ -15,6 +15,7 @@ import settingsRoutes from './routes/settings.js';
 import profileRoutes from './routes/profile.js';
 import facultyRoutes from './routes/faculties.js';
 import departmentRoutes from './routes/departments.js';
+import { startDeletionWorker } from './lib/deletionWorker.js';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -70,6 +71,9 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`\n✅ Classify API running on port ${PORT}`);
   console.log(`   Local:   http://localhost:${PORT}/api/health`);
   console.log(`   Network: http://0.0.0.0:${PORT}/api/health\n`);
+
+  // Start background workers
+  startDeletionWorker();
 });
 
 export default app;

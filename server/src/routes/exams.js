@@ -1,6 +1,8 @@
 import { Router } from 'express';
+import bcrypt from 'bcryptjs';
 import { prisma } from '../lib/prisma.js';
 import { authenticate, requireRole } from '../middleware/auth.js';
+import { readSettings } from './settings.js';
 
 const router = Router();
 router.use(authenticate);
@@ -19,6 +21,8 @@ router.get('/', async (req, res, next) => {
     try {
         const { courseId, semesterId } = req.query;
         const where = {
+            isArchived: false,
+            deletionScheduledAt: null,
             ...(courseId && { courseId }),
             ...(semesterId && { semesterId }),
         };
@@ -138,8 +142,81 @@ router.put('/:id', requireRole('ADMIN', 'INSTRUCTOR'), async (req, res, next) =>
 // DELETE /api/exams/:id
 router.delete('/:id', requireRole('ADMIN'), async (req, res, next) => {
     try {
-        await prisma.exam.delete({ where: { id: req.params.id } });
-        res.json({ message: 'Exam deleted' });
+        const { password, type } = req.body; // type: 'archive' | 'full'
+        if (!password) return res.status(400).json({ error: 'Password required' });
+
+        // Verify Admin Password
+        const user = await prisma.user.findUnique({ where: { id: req.user.id } });
+        const isValid = await bcrypt.compare(password, user.password);
+        if (!isValid) return res.status(403).json({ error: 'Invalid password' });
+
+        const settings = readSettings();
+        const graceDays = settings.examDeletionGraceDays || 3;
+
+        if (type === 'archive') {
+            await prisma.exam.update({
+                where: { id: req.params.id },
+                data: { isArchived: true }
+            });
+            return res.json({ message: 'Exam removed from schedule' });
+        } else {
+            // Schedule for deletion
+            const scheduledAt = new Date(Date.now() + graceDays * 24 * 60 * 60 * 1000);
+            await prisma.exam.update({
+                where: { id: req.params.id },
+                data: {
+                    isArchived: true,
+                    deletionScheduledAt: scheduledAt
+                }
+            });
+            return res.json({ message: `Exam scheduled for permanent deletion in ${graceDays} days` });
+        }
+    } catch (err) { next(err); }
+});
+
+// GET /api/exams/pending-deletions
+router.get('/pending/deletions', requireRole('ADMIN', 'INSTRUCTOR'), async (req, res, next) => {
+    try {
+        const now = new Date();
+        const [written, cbt] = await Promise.all([
+            prisma.exam.findMany({
+                where: { deletionScheduledAt: { lte: now } },
+                include: { course: { select: { code: true, title: true } } }
+            }),
+            prisma.cbtExam.findMany({
+                where: { deletionScheduledAt: { lte: now } },
+                include: { course: { select: { code: true, title: true } } }
+            })
+        ]);
+
+        const unified = [
+            ...written.map(e => ({ ...e, isCbt: false })),
+            ...cbt.map(e => ({ ...e, isCbt: true }))
+        ];
+        res.json({ data: unified });
+    } catch (err) { next(err); }
+});
+
+// POST /api/exams/:id/final-delete
+router.post('/:id/final-delete', requireRole('ADMIN'), async (req, res, next) => {
+    try {
+        const { isCbt } = req.body;
+        const id = req.params.id;
+
+        if (isCbt) {
+            await prisma.$transaction([
+                prisma.cbtAnswer.deleteMany({ where: { attempt: { examId: id } } }),
+                prisma.cbtAttempt.deleteMany({ where: { examId: id } }),
+                prisma.cbtExamQuestion.deleteMany({ where: { examId: id } }),
+                prisma.cbtExam.delete({ where: { id } })
+            ]);
+        } else {
+            await prisma.$transaction([
+                prisma.score.deleteMany({ where: { examId: id } }),
+                prisma.exam.delete({ where: { id } })
+            ]);
+        }
+        res.json({ message: 'Exam permanently deleted' });
     } catch (err) { next(err); }
 });
 

@@ -2,19 +2,9 @@ import { Router } from 'express';
 import bcrypt from 'bcryptjs';
 import { readFileSync, existsSync } from 'fs';
 import { join, dirname } from 'path';
-import { fileURLToPath } from 'url';
 import { prisma } from '../lib/prisma.js';
 import { authenticate, requireRole } from '../middleware/auth.js';
-
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const SETTINGS_FILE = join(__dirname, '../../data/settings.json');
-
-const readSettings = () => {
-    try {
-        if (existsSync(SETTINGS_FILE)) return JSON.parse(readFileSync(SETTINGS_FILE, 'utf8'));
-    } catch { }
-    return { attendanceWeight: 10 };
-};
+import { readSettings } from './settings.js';
 
 const router = Router();
 router.use(authenticate);
