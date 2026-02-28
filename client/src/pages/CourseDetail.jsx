@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, Users, UserCheck, BookOpen, Trash2, Edit2, Plus, Check } from 'lucide-react';
-import api from '../api';
+import { ArrowLeft, Users, UserCheck, BookOpen, Trash2, Edit2, Plus, Check, X } from 'lucide-react';
+import api, { SERVER_URL } from '../api';
 import { useToast } from '../context/ToastContext';
 import { useAuth } from '../context/AuthContext';
 
@@ -28,6 +28,14 @@ export default function CourseDetail() {
     const [savingTopic, setSavingTopic] = useState(false);
     const [editingTopicId, setEditingTopicId] = useState(null);
 
+    const [resources, setResources] = useState([]);
+    const [loadingResources, setLoadingResources] = useState(false);
+    const [resourceModal, setResourceModal] = useState(null);
+    const [resourceForm, setResourceForm] = useState({ title: '', description: '', type: 'VIDEO', isExternal: false, url: '' });
+    const [uploadingFile, setUploadingFile] = useState(null);
+    const [savingResource, setSavingResource] = useState(false);
+    const [viewingMaterial, setViewingMaterial] = useState(null);
+
     useEffect(() => {
         (async () => {
             try {
@@ -50,10 +58,20 @@ export default function CourseDetail() {
                     setSession(curRes.data.session?.title || session);
                     setSemester(curRes.data.name || semester);
                 }
+                loadResources();
             } catch { }
             setLoading(false);
         })();
     }, [id]);
+
+    const loadResources = async () => {
+        setLoadingResources(true);
+        try {
+            const { data } = await api.get('/materials', { params: { courseId: id } });
+            setResources(data.data || []);
+        } catch { }
+        setLoadingResources(false);
+    };
 
     const handleEnroll = async (e) => {
         e.preventDefault();
@@ -136,6 +154,53 @@ export default function CourseDetail() {
         }
     };
 
+    const handleSaveResource = async (e) => {
+        e.preventDefault();
+        setSavingResource(true);
+        try {
+            const formData = new FormData();
+            formData.append('title', resourceForm.title);
+            formData.append('description', resourceForm.description);
+            formData.append('type', resourceForm.type);
+            formData.append('isExternal', resourceForm.isExternal);
+            formData.append('courseId', id);
+            formData.append('semesterId', course.semesterId || (course.semesters?.[0] === 'FIRST' ? 'first_id_placeholder' : 'second_id_placeholder')); // Fallback
+            // Use session/semester if id is not available
+            if (resourceForm.isExternal) {
+                formData.append('url', resourceForm.url);
+            } else if (uploadingFile) {
+                formData.append('file', uploadingFile);
+            }
+
+            // Real semester mapping
+            const currentSemester = await api.get('/sessions/current');
+            if (currentSemester.data) {
+                formData.set('semesterId', currentSemester.data.id);
+            }
+
+            await api.post('/materials', formData, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
+            toast('Resource added successfully');
+            setResourceModal(null);
+            loadResources();
+        } catch (err) {
+            toast(err.response?.data?.error || 'Failed to upload resource', 'error');
+        }
+        setSavingResource(false);
+    };
+
+    const handleDeleteResource = async (rid) => {
+        if (!window.confirm('Delete this resource?')) return;
+        try {
+            await api.delete(`/materials/${rid}`);
+            toast('Resource deleted');
+            loadResources();
+        } catch (err) {
+            toast('Delete failed', 'error');
+        }
+    };
+
     if (loading) return <div className="loading-wrap"><div className="spinner" /></div>;
     if (!course) return <div className="empty"><p>Course not found.</p></div>;
 
@@ -175,9 +240,9 @@ export default function CourseDetail() {
             </div>
 
             <div className="tabs">
-                {['overview', 'curriculum', 'students', isAdmin && 'enroll', isAdmin && 'assignments'].filter(Boolean).map(t => (
+                {['overview', 'curriculum', 'resources', 'students', isAdmin && 'enroll', isAdmin && 'assignments'].filter(Boolean).map(t => (
                     <button key={t} className={`tab-btn ${tab === t ? 'active' : ''}`} onClick={() => setTab(t)}>
-                        {t === 'overview' ? 'Instructors' : t === 'curriculum' ? `Curriculum (${topics.length})` : t === 'students' ? `Students (${students.length})` : t === 'enroll' ? 'Enroll Students' : 'Assignments'}
+                        {t === 'overview' ? 'Instructors' : t === 'curriculum' ? `Curriculum (${topics.length})` : t === 'resources' ? `Resources (${resources.length})` : t === 'students' ? `Students (${students.length})` : t === 'enroll' ? 'Enroll Students' : 'Assignments'}
                     </button>
                 ))}
             </div>
@@ -370,6 +435,57 @@ export default function CourseDetail() {
                 </div>
             )}
 
+            {tab === 'resources' && (
+                <div className="card">
+                    <div className="flex items-center justify-between" style={{ marginBottom: 20 }}>
+                        <h3 style={{ fontWeight: 700 }}>Course Materials</h3>
+                        {(isAdmin || isInstructor) && (
+                            <button className="btn btn-primary btn-sm" onClick={() => {
+                                setResourceForm({ title: '', description: '', type: 'VIDEO', isExternal: false, url: '' });
+                                setUploadingFile(null);
+                                setResourceModal(true);
+                            }}>
+                                <Plus size={14} /> Add Resource
+                            </button>
+                        )}
+                    </div>
+
+                    {loadingResources ? <div className="loading-wrap" style={{ minHeight: 100 }}><div className="spinner" /></div> :
+                        resources.length === 0 ? (
+                            <div className="empty" style={{ padding: '20px 0' }}>
+                                <BookOpen size={40} />
+                                <p>No materials uploaded for this course yet.</p>
+                            </div>
+                        ) : (
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16 }}>
+                                {resources.map(res => (
+                                    <div key={res.id} className="resource-card" style={{ border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+                                        <div style={{ padding: 12, flex: 1 }}>
+                                            <div className="flex items-center justify-between" style={{ marginBottom: 8 }}>
+                                                <span className={`badge ${res.type === 'VIDEO' ? 'badge-blue' : 'badge-purple'}`} style={{ fontSize: '0.65rem' }}>{res.type}</span>
+                                                {(isAdmin || res.uploadedById === user?.id) && (
+                                                    <button className="btn-icon" style={{ color: 'var(--danger)' }} onClick={() => handleDeleteResource(res.id)}>
+                                                        <Trash2 size={14} />
+                                                    </button>
+                                                )}
+                                            </div>
+                                            <h4 style={{ fontWeight: 700, fontSize: '0.95rem', marginBottom: 4 }}>{res.title}</h4>
+                                            <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: 12 }}>{res.description || 'No description.'}</p>
+                                        </div>
+                                        <div style={{ padding: 12, background: 'var(--bg-secondary)', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+                                            {res.isExternal ? (
+                                                <button onClick={() => setViewingMaterial(res)} className="btn btn-secondary btn-sm" style={{ width: '100%' }}>View Link</button>
+                                            ) : (
+                                                <button onClick={() => setViewingMaterial(res)} className="btn btn-secondary btn-sm" style={{ width: '100%' }}>View / Read</button>
+                                            )}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                </div>
+            )}
+
             {tab === 'assignments' && isAdmin && (
                 <div className="card">
                     <h3 style={{ marginBottom: 16, fontWeight: 700 }}>Course Assignments</h3>
@@ -458,6 +574,101 @@ export default function CourseDetail() {
                             </button>
                         </div>
                     </form>
+                </div>
+            )}
+
+            {resourceModal && (
+                <div className="modal-backdrop" onClick={() => setResourceModal(false)}>
+                    <div className="modal" onClick={e => e.stopPropagation()}>
+                        <div className="modal-header">
+                            <span className="modal-title">Add Course Resource</span>
+                            <button className="btn-icon" onClick={() => setResourceModal(false)}><X size={20} /></button>
+                        </div>
+                        <form onSubmit={handleSaveResource}>
+                            <div className="modal-body">
+                                <div className="form-group">
+                                    <label>Title *</label>
+                                    <input required value={resourceForm.title} onChange={e => setResourceForm({ ...resourceForm, title: e.target.value })} placeholder="e.g. Week 1 Lecture Video" />
+                                </div>
+                                <div className="form-group">
+                                    <label>Description (Optional)</label>
+                                    <textarea value={resourceForm.description} onChange={e => setResourceForm({ ...resourceForm, description: e.target.value })} rows={2} />
+                                </div>
+                                <div className="form-row">
+                                    <div className="form-group">
+                                        <label>Type</label>
+                                        <select value={resourceForm.type} onChange={e => setResourceForm({ ...resourceForm, type: e.target.value })}>
+                                            <option value="VIDEO">Video Recording</option>
+                                            <option value="READING">Reading Material (PDF)</option>
+                                            <option value="SLIDE">Slides (PPTX)</option>
+                                            <option value="OTHER">Other</option>
+                                        </select>
+                                    </div>
+                                    <div className="form-group">
+                                        <label>Source</label>
+                                        <select value={resourceForm.isExternal} onChange={e => setResourceForm({ ...resourceForm, isExternal: e.target.value === 'true' })}>
+                                            <option value="false">Local Upload</option>
+                                            <option value="true">External Link</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                {resourceForm.isExternal ? (
+                                    <div className="form-group">
+                                        <label>URL *</label>
+                                        <input required type="url" value={resourceForm.url} onChange={e => setResourceForm({ ...resourceForm, url: e.target.value })} placeholder="https://youtube.com/..." />
+                                    </div>
+                                ) : (
+                                    <div className="form-group">
+                                        <label>File Upload (Max 50MB) *</label>
+                                        <input type="file" required={!resourceForm.isExternal} onChange={e => setUploadingFile(e.target.files[0])} />
+                                        <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: 4 }}>Allowed: MP4, PDF, PPT, PPTX</div>
+                                    </div>
+                                )}
+                            </div>
+                            <div className="modal-footer">
+                                <button type="button" className="btn btn-secondary" onClick={() => setResourceModal(false)}>Cancel</button>
+                                <button type="submit" className="btn btn-primary" disabled={savingResource}>{savingResource ? 'Uploading...' : 'Upload Resource'}</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+            {viewingMaterial && (
+                <div className="modal-backdrop" onClick={() => setViewingMaterial(null)}>
+                    <div className="modal" style={{ maxWidth: '900px', width: '95%' }} onClick={e => e.stopPropagation()}>
+                        <div className="modal-header">
+                            <span className="modal-title">{viewingMaterial.title}</span>
+                            <div className="flex gap-8">
+                                {!viewingMaterial.isExternal && (
+                                    <a href={viewingMaterial.url.startsWith('http') ? viewingMaterial.url : `${SERVER_URL}${viewingMaterial.url}`} download className="btn btn-secondary btn-sm">
+                                        <Download size={14} />
+                                    </a>
+                                )}
+                                <button className="btn-icon" onClick={() => setViewingMaterial(null)}><X size={20} /></button>
+                            </div>
+                        </div>
+                        <div className="modal-body" style={{ padding: 0, background: '#000', minHeight: '50vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            {viewingMaterial.type === 'VIDEO' ? (
+                                <video
+                                    src={viewingMaterial.url.startsWith('http') ? viewingMaterial.url : `${SERVER_URL}${viewingMaterial.url}`}
+                                    controls
+                                    autoPlay
+                                    style={{ width: '100%', maxHeight: '80vh' }}
+                                />
+                            ) : viewingMaterial.type === 'READING' ? (
+                                <iframe
+                                    src={viewingMaterial.url.startsWith('http') ? viewingMaterial.url : `${SERVER_URL}${viewingMaterial.url}`}
+                                    style={{ width: '100%', height: '80vh', border: 'none' }}
+                                    title={viewingMaterial.title}
+                                />
+                            ) : (
+                                <div style={{ padding: 40, textAlign: 'center', color: '#fff' }}>
+                                    <p>This file type cannot be previewed directly.</p>
+                                    <a href={viewingMaterial.url} target="_blank" rel="noopener noreferrer" className="btn btn-primary">Open in New Tab</a>
+                                </div>
+                            )}
+                        </div>
+                    </div>
                 </div>
             )}
         </div>

@@ -25,6 +25,7 @@ const nav = [
     {
         section: 'Academic', items: [
             { to: '/courses', label: 'Courses', icon: BookOpen },
+            { to: '/library', label: 'Class Library', icon: BookOpen },
             { to: '/attendance', label: 'Attendance', icon: ClipboardCheck, roles: ['ADMIN', 'INSTRUCTOR'] },
             { to: '/exams', label: 'Examinations', icon: FileText, roles: ['ADMIN', 'INSTRUCTOR'] },
             { to: '/results', label: 'Aggregate Results', icon: GraduationCap, roles: ['ADMIN', 'INSTRUCTOR'] },

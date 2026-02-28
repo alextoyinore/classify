@@ -10,6 +10,7 @@ const getApiBase = () => {
 };
 
 const API_BASE = getApiBase();
+export const SERVER_URL = API_BASE.replace('/api', '');
 
 const api = axios.create({
     baseURL: API_BASE,

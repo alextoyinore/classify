@@ -53,6 +53,13 @@ enum SyncStatus {
   FAILED
 }
 
+enum ResourceType {
+  VIDEO
+  READING
+  SLIDE
+  OTHER
+}
+
 // ─── Core User / Auth ─────────────────────────────────────────────────────────
 
 model User {
@@ -68,6 +75,7 @@ model User {
   student    Student?
   instructor Instructor?
   admin      Admin?
+  resources  Resource[]
 }
 
 // ─── Admin ────────────────────────────────────────────────────────────────────
@@ -169,6 +177,7 @@ model Semester_ {
   exams          Exam[]
   cbtExams       CbtExam[]
   activeSessions AttendanceSession[]
+  resources      Resource[]
 
   @@unique([sessionId, name])
 }
@@ -196,6 +205,7 @@ model Course {
   questions      CbtQuestion[]
   activeSessions AttendanceSession[]
   topics         CourseTopic[]
+  resources      Resource[]
 }
 
 model CourseTopic {
@@ -209,6 +219,7 @@ model CourseTopic {
   updatedAt   DateTime @updatedAt
 
   questions CbtQuestion[]
+  resources Resource[]
 
   @@index([courseId])
   @@index([courseId, order])
@@ -262,18 +273,18 @@ model Attendance {
 // ─── Examination (Written) ────────────────────────────────────────────────────
 
 model Exam {
-  id         String    @id @default(cuid())
-  courseId   String
-  course     Course    @relation(fields: [courseId], references: [id])
-  semesterId String
-  semester   Semester_ @relation(fields: [semesterId], references: [id])
-  title      String
-  type       ExamType  @default(WRITTEN)
-  examDate   DateTime?
-  totalMarks Float     @default(100)
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
-  isArchived      Boolean   @default(false)
+  id                  String    @id @default(cuid())
+  courseId            String
+  course              Course    @relation(fields: [courseId], references: [id])
+  semesterId          String
+  semester            Semester_ @relation(fields: [semesterId], references: [id])
+  title               String
+  type                ExamType  @default(WRITTEN)
+  examDate            DateTime?
+  totalMarks          Float     @default(100)
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  isArchived          Boolean   @default(false)
   deletionScheduledAt DateTime?
 
   scores Score[]
@@ -321,27 +332,27 @@ model CbtQuestion {
 }
 
 model CbtExam {
-  id              String    @id @default(cuid())
-  courseId        String
-  course          Course    @relation(fields: [courseId], references: [id])
-  semesterId      String
-  semester        Semester_ @relation(fields: [semesterId], references: [id])
-  title           String
-  category        String?   @default("EXAM") // "TEST", "EXAM"
-  mode            String?   @default("CBT")  // "CBT", "WRITTEN", "PRACTICAL"
-  instructions    String?
-  topicIds        String[]  @default([])
-  numQuestions    Int?      @default(0)
-  durationMinutes Int       @default(60)
-  totalMarks      Float     @default(100)
-  passMark        Float     @default(50)
-  isPublished     Boolean   @default(false)
-  startWindow     DateTime? // earliest a student can start
-  endWindow       DateTime? // deadline — no new attempts after this
-  allowReview     Boolean   @default(true)
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-  isArchived      Boolean   @default(false)
+  id                  String    @id @default(cuid())
+  courseId            String
+  course              Course    @relation(fields: [courseId], references: [id])
+  semesterId          String
+  semester            Semester_ @relation(fields: [semesterId], references: [id])
+  title               String
+  category            String?   @default("EXAM") // "TEST", "EXAM"
+  mode                String?   @default("CBT") // "CBT", "WRITTEN", "PRACTICAL"
+  instructions        String?
+  topicIds            String[]  @default([])
+  numQuestions        Int?      @default(0)
+  durationMinutes     Int       @default(60)
+  totalMarks          Float     @default(100)
+  passMark            Float     @default(50)
+  isPublished         Boolean   @default(false)
+  startWindow         DateTime? // earliest a student can start
+  endWindow           DateTime? // deadline — no new attempts after this
+  allowReview         Boolean   @default(true)
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  isArchived          Boolean   @default(false)
   deletionScheduledAt DateTime?
 
   questions CbtExamQuestion[]
@@ -450,4 +461,27 @@ model Department {
   attendanceSessions AttendanceSession[]
 
   @@unique([facultyId, name])
+}
+
+model Resource {
+  id           String       @id @default(cuid())
+  courseId     String
+  course       Course       @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  semesterId   String
+  semester     Semester_    @relation(fields: [semesterId], references: [id], onDelete: Cascade)
+  topicId      String?
+  topic        CourseTopic? @relation(fields: [topicId], references: [id])
+  title        String
+  description  String?
+  type         ResourceType
+  url          String
+  isExternal   Boolean      @default(false)
+  fileSize     Int?
+  uploadedById String
+  uploadedBy   User         @relation(fields: [uploadedById], references: [id])
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  @@index([courseId])
+  @@index([semesterId])
 }
