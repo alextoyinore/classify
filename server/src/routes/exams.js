@@ -73,7 +73,12 @@ router.get('/:id', async (req, res, next) => {
 // POST /api/exams
 router.post('/', requireRole('ADMIN', 'INSTRUCTOR'), async (req, res, next) => {
     try {
-        const { courseId, semesterId, title, type, examDate, totalMarks, topicIds, numQuestions } = req.body;
+        const {
+            courseId, semesterId, title, type, examDate, totalMarks,
+            topicIds, numQuestions, category, instructions,
+            durationMinutes, passMark, startWindow, endWindow, allowReview
+        } = req.body;
+
         if (!courseId || !semesterId || !title)
             return res.status(400).json({ error: 'courseId, semesterId, and title are required' });
 
@@ -82,10 +87,16 @@ router.post('/', requireRole('ADMIN', 'INSTRUCTOR'), async (req, res, next) => {
             const exam = await prisma.cbtExam.create({
                 data: {
                     courseId, semesterId, title, mode: 'CBT',
+                    category: category || 'EXAM',
+                    instructions: instructions || '',
+                    durationMinutes: Number(durationMinutes) || 60,
                     totalMarks: Number(totalMarks) || 100,
+                    passMark: Number(passMark) || 50,
+                    startWindow: startWindow ? new Date(startWindow) : null,
+                    endWindow: endWindow ? new Date(endWindow) : null,
+                    allowReview: allowReview ?? true,
                     topicIds: topicIds || [],
                     numQuestions: Number(numQuestions) || 0,
-                    instructions: '' // default empty
                 }
             });
 

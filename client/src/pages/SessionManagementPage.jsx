@@ -189,8 +189,3 @@ export default function SessionManagementPage() {
         </div>
     );
 }
-
-// Add these to index.css if not present:
-// .md-col-span-1 { grid-column: span 1; }
-// .md-col-span-2 { grid-column: span 2; }
-// .bg-accent-dim { background: var(--accent-dim); }

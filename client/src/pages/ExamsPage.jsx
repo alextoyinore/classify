@@ -1,10 +1,15 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, X, Edit2, Trash2, FileText, Monitor, Settings2, BarChart2, Check } from 'lucide-react';
+import { Plus, X, Edit2, Trash2, FileText, Monitor, Settings2, BarChart2, Check, Calendar } from 'lucide-react';
 import api from '../api';
 import { useToast } from '../context/ToastContext';
 
-const empty = { title: '', courseId: '', semesterId: '', type: 'WRITTEN', examDate: '', totalMarks: 100, topicIds: [], numQuestions: 0 };
+const empty = {
+    title: '', courseId: '', semesterId: '', type: 'WRITTEN', category: 'TEST',
+    examDate: '', totalMarks: 100, passMark: 40, durationMinutes: 60,
+    instructions: '', topicIds: [], numQuestions: 0,
+    startWindow: '', endWindow: '', allowReview: true
+};
 
 export default function ExamsPage() {
     const toast = useToast();
@@ -16,6 +21,7 @@ export default function ExamsPage() {
     const [loading, setLoading] = useState(true);
     const [modal, setModal] = useState(null);
     const [form, setForm] = useState(empty);
+    const [currentSemesterId, setCurrentSemesterId] = useState('');
     const [saving, setSaving] = useState(false);
     const [scoreModal, setScoreModal] = useState(null); // { exam, students }
     const [scoreEntries, setScoreEntries] = useState({});
@@ -38,7 +44,23 @@ export default function ExamsPage() {
 
     useEffect(() => {
         if (form.courseId) loadTopics(form.courseId);
+        else setCourseTopics([]);
     }, [form.courseId]);
+
+    // Auto-generate title for CBT
+    useEffect(() => {
+        if (form.type !== 'CBT' || !form.courseId || !form.semesterId) return;
+        const course = courses.find(c => c.id === form.courseId);
+        const semester = sessions.find(s => s.id === form.semesterId);
+        if (course && semester) {
+            const catLabel = form.category || 'TEST';
+            const sessionTitle = semester.session?.title || '';
+            const newTitle = `CBT ${catLabel}: ${course.code} - ${semester.name} ${sessionTitle ? `(${sessionTitle})` : ''}`;
+            if (form.title !== newTitle) {
+                setForm(f => ({ ...f, title: newTitle }));
+            }
+        }
+    }, [form.type, form.category, form.courseId, form.semesterId, courses, sessions]);
 
     const load = async () => {
         setLoading(true);
@@ -53,6 +75,7 @@ export default function ExamsPage() {
             setCourses(cRes.data.data || []);
             setSessions(sRes.data || []);
             if (curRes.data) {
+                setCurrentSemesterId(curRes.data.id);
                 setForm(f => ({ ...f, semesterId: curRes.data.id }));
             }
         } catch { }
@@ -61,13 +84,22 @@ export default function ExamsPage() {
 
     useEffect(() => { load(); }, []);
 
-    const openAdd = () => { setForm(empty); setModal('add'); };
+    const openAdd = () => { setForm({ ...empty, semesterId: currentSemesterId }); setModal('add'); };
     const openEdit = (ex) => {
         setForm({
-            title: ex.title, courseId: ex.courseId, semesterId: ex.semesterId, type: ex.type,
+            ...empty,
+            title: ex.title, courseId: ex.courseId, semesterId: ex.semesterId, type: ex.isCbt ? 'CBT' : (ex.type || 'WRITTEN'),
             examDate: ex.examDate ? ex.examDate.substring(0, 10) : '', totalMarks: ex.totalMarks, id: ex.id,
             topicIds: ex.topicIds || [], numQuestions: ex.numQuestions || 0,
-            isCbt: ex.isCbt
+            isCbt: ex.isCbt,
+            category: ex.category || 'EXAM',
+            instructions: ex.instructions || '',
+            passMark: ex.passMark || 40,
+            durationMinutes: ex.durationMinutes || 60,
+            startWindow: ex.startWindow ? ex.startWindow.substring(0, 16) : '',
+            endWindow: ex.endWindow ? ex.endWindow.substring(0, 16) : '',
+            allowReview: ex.allowReview ?? true,
+            isPublished: ex.isPublished
         });
         setModal('edit');
     };
@@ -89,10 +121,14 @@ export default function ExamsPage() {
         setSaving(false);
     };
 
-    const handleDelete = async (id, title) => {
+    const handleDelete = async (id, title, isCbt = false) => {
         if (!confirm(`Delete "${title}"?`)) return;
-        try { await api.delete(`/exams/${id}`); toast('Exam deleted'); load(); }
-        catch (err) { toast(err.response?.data?.error || 'Delete failed', 'error'); }
+        try {
+            const endpoint = isCbt ? `/cbt/exams/${id}` : `/exams/${id}`;
+            await api.delete(endpoint);
+            toast('Exam deleted');
+            load();
+        } catch (err) { toast(err.response?.data?.error || 'Delete failed', 'error'); }
     };
 
     const openScores = async (exam) => {
@@ -155,7 +191,12 @@ export default function ExamsPage() {
                     <h1 className="page-title">Management Center</h1>
                     <p className="page-subtitle">Unified dashboard for exams, banks and results</p>
                 </div>
-                <button className="btn btn-primary" onClick={openAdd}><Plus size={16} /> Schedule New</button>
+                <button className="btn btn-primary" onClick={() => {
+                    setForm({ ...empty, type: 'CBT', semesterId: currentSemesterId });
+                    setModal('add');
+                }}>
+                    <Plus size={16} /> Schedule Exam
+                </button>
             </div>
 
             <div className="flex gap-24 mb-24 border-b" style={{ borderColor: 'var(--border)' }}>
@@ -211,6 +252,8 @@ export default function ExamsPage() {
                                                                 <button className="btn btn-secondary btn-sm" onClick={() => openAssign(ex)}>
                                                                     <Settings2 size={14} /> Questions
                                                                 </button>
+                                                                <button className="btn btn-secondary btn-sm btn-icon" onClick={() => openEdit(ex)}><Edit2 size={14} /></button>
+                                                                <button className="btn btn-danger btn-sm btn-icon" onClick={() => handleDelete(ex.id, ex.title, ex.isCbt)}><Trash2 size={14} /></button>
                                                                 {ex.isPublished && (
                                                                     <button className="btn btn-secondary btn-sm" onClick={() => navigate(`/exams/${ex.id}/analytics`)}>
                                                                         <BarChart2 size={14} /> Analytics
@@ -238,7 +281,7 @@ export default function ExamsPage() {
             {/* Add/Edit Modal */}
             {modal && (
                 <div className="modal-backdrop" onClick={() => setModal(null)}>
-                    <div className="modal" onClick={e => e.stopPropagation()}>
+                    <div className="modal" style={{ maxWidth: 640 }} onClick={e => e.stopPropagation()}>
                         <div className="modal-header">
                             <span className="modal-title">{modal === 'add' ? 'Schedule Exam' : 'Edit Exam'}</span>
                             <button className="btn btn-secondary btn-sm btn-icon" onClick={() => setModal(null)}><X size={16} /></button>
@@ -261,20 +304,124 @@ export default function ExamsPage() {
                                     </div>
                                 </div>
                                 <div className="form-row">
-                                    <div className="form-group"><label>Type</label>
-                                        <select value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value }))}>
-                                            <option>WRITTEN</option><option>CBT</option><option>PRACTICAL</option>
-                                        </select>
+                                    <div className="form-group">
+                                        <label>Mode / Type</label>
+                                        <div className="flex gap-8">
+                                            {[
+                                                { id: 'WRITTEN', label: 'Written' },
+                                                { id: 'CBT', label: 'Digital/CBT' },
+                                                { id: 'PRACTICAL', label: 'Practical' }
+                                            ].map(t => (
+                                                <button key={t.id} type="button"
+                                                    className={`btn btn-sm ${form.type === t.id ? 'btn-primary' : 'btn-secondary'}`}
+                                                    style={{ flex: 1 }}
+                                                    onClick={() => setForm(f => ({ ...f, type: t.id }))}>
+                                                    {t.label}
+                                                </button>
+                                            ))}
+                                        </div>
                                     </div>
                                     <div className="form-group"><label>Total Marks</label>
                                         <input type="number" min={1} value={form.totalMarks} onChange={e => setForm(f => ({ ...f, totalMarks: Number(e.target.value) }))} />
                                     </div>
                                 </div>
-                                <div className="form-group"><label>Exam Date</label><input type="date" value={form.examDate} onChange={e => setForm(f => ({ ...f, examDate: e.target.value }))} /></div>
+                                {form.type !== 'CBT' ? (
+                                    <div className="form-group">
+                                        <label>Exam Date</label>
+                                        <input type="date" value={form.examDate} onChange={e => setForm(f => ({ ...f, examDate: e.target.value }))} />
+                                        <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: 4 }}>The specific day this exam takes place.</p>
+                                    </div>
+                                ) : (
+                                    <div className="card" style={{ background: 'var(--accent-dim)', padding: '10px 14px', borderRadius: 8, border: '1px solid var(--accent-light)', marginBottom: 16 }}>
+                                        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                                            <Calendar size={18} color="var(--accent)" />
+                                            <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--accent-dark)', fontWeight: 600 }}>
+                                                CBT Window mode is active. Use the <b>Start</b> and <b>End Windows</b> below to control student access.
+                                            </p>
+                                        </div>
+                                    </div>
+                                )}
 
                                 {form.type === 'CBT' && (
                                     <div className="card" style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)', padding: 16, marginTop: 16 }}>
-                                        <h3 style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: 12 }}>Question Pooling</h3>
+                                        <h3 style={{ fontSize: '1rem', fontWeight: 800, marginBottom: 16, color: 'var(--accent)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                                            <Monitor size={18} /> Digital Exam Configuration
+                                        </h3>
+
+                                        <div className="form-row">
+                                            <div className="form-group">
+                                                <label>Exam Category</label>
+                                                <div className="flex gap-12">
+                                                    {['TEST', 'EXAM'].map(c => (
+                                                        <button key={c} type="button"
+                                                            className={`btn btn-sm ${form.category === c ? 'btn-primary' : 'btn-secondary'}`}
+                                                            style={{ flex: 1 }}
+                                                            onClick={() => setForm(f => ({ ...f, category: c }))}>
+                                                            {c}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                            <div className="form-group">
+                                                <label>Duration (Minutes)</label>
+                                                <input type="number" min={1} value={form.durationMinutes} onChange={e => setForm(f => ({ ...f, durationMinutes: Number(e.target.value) }))} />
+                                            </div>
+                                        </div>
+
+                                        <div className="form-row">
+                                            <div className="form-group">
+                                                <label>Pass Mark (%)</label>
+                                                <input type="number" min={1} max={100} value={form.passMark} onChange={e => setForm(f => ({ ...f, passMark: Number(e.target.value) }))} />
+                                            </div>
+                                            <div className="form-group">
+                                                <label>Availability</label>
+                                                <div className="flex items-center gap-12 mt-8">
+                                                    <label className="flex items-center gap-6 cursor-pointer">
+                                                        <input type="checkbox" checked={form.allowReview} onChange={e => setForm(f => ({ ...f, allowReview: e.target.checked }))} />
+                                                        <span style={{ fontSize: '0.82rem' }}>Allow Review</span>
+                                                    </label>
+                                                    {modal === 'edit' && (
+                                                        <label className="flex items-center gap-6 cursor-pointer">
+                                                            <input type="checkbox" checked={form.isPublished} onChange={e => setForm(f => ({ ...f, isPublished: e.target.checked }))} />
+                                                            <span style={{ fontSize: '0.82rem', color: 'var(--green)', fontWeight: 700 }}>Published</span>
+                                                        </label>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="form-row">
+                                            <div className="form-group">
+                                                <label>Start Window (Optional)</label>
+                                                <input type="datetime-local" value={form.startWindow} onChange={e => setForm(f => ({ ...f, startWindow: e.target.value }))} />
+                                            </div>
+                                            <div className="form-group">
+                                                <label>End Window (Optional)</label>
+                                                <input type="datetime-local" value={form.endWindow} onChange={e => setForm(f => ({ ...f, endWindow: e.target.value }))} />
+                                            </div>
+                                        </div>
+
+                                        <div className="form-row">
+                                            <div className="form-group">
+                                                <label>Number of Random Questions</label>
+                                                <input
+                                                    type="number" min={1}
+                                                    value={form.numQuestions || ''}
+                                                    onChange={e => setForm(f => ({ ...f, numQuestions: e.target.value }))}
+                                                    placeholder="e.g. 50"
+                                                />
+                                            </div>
+                                            <div className="form-group">
+                                                <label>Points Per Question</label>
+                                                <div style={{ padding: '8px 12px', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 6, fontSize: '0.9rem', fontWeight: 700, color: 'var(--accent)' }}>
+                                                    {form.numQuestions > 0 ? (form.totalMarks / form.numQuestions).toFixed(2) : '0.00'} pts
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="divider my-16" style={{ borderTop: '1px dashed var(--border)' }} />
+
+                                        <h3 style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: 12 }}>Question Pooling (Topics)</h3>
                                         <div className="form-group">
                                             <div className="flex items-center justify-between mb-8">
                                                 <label style={{ margin: 0 }}>Select Topics</label>
@@ -286,7 +433,7 @@ export default function ExamsPage() {
                                                 </button>
                                             </div>
                                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 8 }}>
-                                                {courseTopics.map(topic => {
+                                                {courseTopics.length > 0 ? courseTopics.map(topic => {
                                                     const selected = form.topicIds?.includes(topic.id);
                                                     return (
                                                         <label key={topic.id} style={{
@@ -305,25 +452,17 @@ export default function ExamsPage() {
                                                             <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{topic.title}</span>
                                                         </label>
                                                     );
-                                                })}
+                                                }) : (
+                                                    <div style={{ gridColumn: '1/-1', padding: '20px', textAlign: 'center', background: 'var(--bg-inset)', borderRadius: 8, color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+                                                        {form.courseId ? 'No topics found for this course. Please add topics in the Course Curriculum.' : 'Select a course above to see available topics.'}
+                                                    </div>
+                                                )}
                                             </div>
                                         </div>
-                                        <div className="form-row mt-12">
-                                            <div className="form-group">
-                                                <label>Number of Random Questions</label>
-                                                <input
-                                                    type="number" min={1}
-                                                    value={form.numQuestions || ''}
-                                                    onChange={e => setForm(f => ({ ...f, numQuestions: e.target.value }))}
-                                                    placeholder="e.g. 50"
-                                                />
-                                            </div>
-                                            <div className="form-group">
-                                                <label>Points Per Question</label>
-                                                <div style={{ padding: '8px 12px', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 6, fontSize: '0.9rem', fontWeight: 700, color: 'var(--accent)' }}>
-                                                    {form.numQuestions > 0 ? (form.totalMarks / form.numQuestions).toFixed(2) : '0.00'} pts
-                                                </div>
-                                            </div>
+
+                                        <div className="form-group mt-16">
+                                            <label>Instructions for Students</label>
+                                            <textarea rows={3} placeholder="e.g. Ensure your webcam is on. No calculators allowed..." value={form.instructions} onChange={e => setForm(f => ({ ...f, instructions: e.target.value }))} />
                                         </div>
                                     </div>
                                 )}
@@ -380,7 +519,7 @@ export default function ExamsPage() {
             {/* Question Assignment Modal */}
             {assignModal && (
                 <div className="modal-backdrop" onClick={() => setAssignModal(null)}>
-                    <div className="modal" style={{ maxWidth: 800 }} onClick={e => e.stopPropagation()}>
+                    <div className="modal" style={{ maxWidth: '85%', width: 800 }} onClick={e => e.stopPropagation()}>
                         <div className="modal-header">
                             <div>
                                 <span className="modal-title">Manual Question Selection: {assignModal.title}</span>

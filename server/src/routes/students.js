@@ -1,10 +1,138 @@
 import { Router } from 'express';
 import bcrypt from 'bcryptjs';
+import { readFileSync, existsSync } from 'fs';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
 import { prisma } from '../lib/prisma.js';
 import { authenticate, requireRole } from '../middleware/auth.js';
 
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const SETTINGS_FILE = join(__dirname, '../../data/settings.json');
+
+const readSettings = () => {
+    try {
+        if (existsSync(SETTINGS_FILE)) return JSON.parse(readFileSync(SETTINGS_FILE, 'utf8'));
+    } catch { }
+    return { attendanceWeight: 10 };
+};
+
 const router = Router();
 router.use(authenticate);
+
+// GET /api/students/results/aggregate
+router.get('/results/aggregate', async (req, res, next) => {
+    try {
+        const { departmentId, courseId, semesterId, level } = req.query;
+        const studentId = req.user.role === 'STUDENT' ? req.user.student?.id : req.query.studentId;
+
+        if (req.user.role === 'STUDENT' && !studentId) {
+            return res.status(403).json({ error: 'Student profile not found' });
+        }
+
+        const settings = readSettings();
+        const attendanceWeight = Number(settings.attendanceWeight) || 0;
+
+        // 1. Determine active semester/session if not provided
+        let semId = semesterId;
+        if (!semId) {
+            const activeSem = await prisma.semester_.findFirst({ where: { isCurrent: true } });
+            semId = activeSem?.id;
+        }
+
+        if (!semId) return res.status(400).json({ error: 'No active semester found' });
+
+        // 2. Fetch Students
+        const students = await prisma.student.findMany({
+            where: {
+                ...(studentId && { id: studentId }),
+                ...(departmentId && { departmentId }),
+                ...(level && { level: Number(level) }),
+            },
+            include: {
+                department: { select: { name: true } },
+                enrollments: {
+                    where: { semester: (await prisma.semester_.findUnique({ where: { id: semId } }))?.name },
+                    include: { course: true }
+                }
+            },
+            orderBy: { lastName: 'asc' }
+        });
+
+        // 3. For each student, aggregate scores
+        const results = await Promise.all(students.map(async (student) => {
+            const coursesData = await Promise.all(student.enrollments.map(async (enc) => {
+                const cId = enc.courseId;
+
+                // Attendance
+                const [totalSessions, presentCount] = await Promise.all([
+                    prisma.attendanceSession.count({
+                        where: {
+                            courseId: cId, semesterId: semId,
+                            AND: [
+                                { OR: [{ departmentId: student.departmentId }, { departmentId: null }] },
+                                { OR: [{ level: student.level }, { level: null }] }
+                            ]
+                        }
+                    }),
+                    prisma.attendance.count({
+                        where: { studentId: student.id, courseId: cId, semesterId: semId, status: 'PRESENT' }
+                    })
+                ]);
+
+                const attendanceScore = totalSessions > 0 ? (presentCount / totalSessions) * attendanceWeight : 0;
+
+                // Test Score (CBT where category = TEST)
+                const tests = await prisma.cbtAttempt.findMany({
+                    where: { studentId: student.id, exam: { courseId: cId, semesterId: semId, category: 'TEST' } },
+                    include: { exam: { select: { totalMarks: true } } }
+                });
+                const testScore = tests.reduce((sum, t) => sum + (t.score || 0), 0);
+                const testMax = tests.reduce((sum, t) => sum + (t.exam.totalMarks || 0), 0);
+
+                // Exam Score (CBT where category = EXAM + Written)
+                const [cbtExams, writtenScores] = await Promise.all([
+                    prisma.cbtAttempt.findMany({
+                        where: { studentId: student.id, exam: { courseId: cId, semesterId: semId, category: 'EXAM' } },
+                        include: { exam: { select: { totalMarks: true } } }
+                    }),
+                    prisma.score.findMany({
+                        where: { studentId: student.id, exam: { courseId: cId, semesterId: semId } },
+                        include: { exam: { select: { totalMarks: true } } }
+                    })
+                ]);
+
+                const examScore = cbtExams.reduce((sum, t) => sum + (t.score || 0), 0) + writtenScores.reduce((sum, s) => sum + (s.score || 0), 0);
+                const examMax = cbtExams.reduce((sum, t) => sum + (t.exam.totalMarks || 0), 0) + writtenScores.reduce((sum, s) => sum + (s.exam.totalMarks || 0), 0);
+
+                return {
+                    courseCode: enc.course.code,
+                    courseTitle: enc.course.title,
+                    attendance: { present: presentCount, total: totalSessions, score: Math.round(attendanceScore * 100) / 100, weight: attendanceWeight },
+                    test: { score: testScore, max: testMax },
+                    exam: { score: examScore, max: examMax },
+                    total: Math.round((attendanceScore + testScore + examScore) * 100) / 100
+                };
+            }));
+
+            // Filter by courseId if requested (after processing all or selectively)
+            const filteredCourses = courseId ? coursesData.filter(c => student.enrollments.find(e => e.courseId === courseId && e.course.code === c.courseCode)) : coursesData;
+
+            if (courseId && filteredCourses.length === 0) return null;
+
+            return {
+                id: student.id,
+                firstName: student.firstName,
+                lastName: student.lastName,
+                matricNumber: student.matricNumber,
+                department: student.department?.name,
+                level: student.level,
+                courses: filteredCourses
+            };
+        }));
+
+        res.json(results.filter(r => r !== null));
+    } catch (err) { next(err); }
+});
 
 // GET /api/students?search=&department=&level=&page=1&limit=20
 router.get('/', requireRole('ADMIN', 'INSTRUCTOR'), async (req, res, next) => {

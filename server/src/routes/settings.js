@@ -21,6 +21,7 @@ const defaultSettings = {
     logoUrl: '',
     currentSession: process.env.CURRENT_SESSION || '2024/2025',
     currentSemester: process.env.CURRENT_SEMESTER || 'FIRST',
+    attendanceWeight: 10,
     updatedAt: new Date().toISOString(),
 };
 

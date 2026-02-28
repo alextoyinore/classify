@@ -69,7 +69,7 @@ export default function CoursesPage() {
             </div>
 
             <div className="search-bar">
-                <div className="search-input-wrap" style={{ flexBasis: 260 }}>
+                <div className="search-input-wrap flex-260">
                     <Search className="search-icon" size={16} />
                     <input placeholder="Search code or title…" value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} />
                 </div>

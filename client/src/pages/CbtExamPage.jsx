@@ -22,27 +22,38 @@ export default function CbtExamPage() {
     const timerRef = useRef(null);
     const isNavigatingAway = useRef(false);
 
-    useEffect(() => {
-        (async () => {
-            try {
-                const { data } = await api.get('/cbt/exams?published=true');
-                setAvailExams(data.data || []);
-            } catch { }
-        })();
-    }, []);
+    const fetchExams = async () => {
+        try {
+            const { data } = await api.get('/cbt/exams?published=true');
+            setAvailExams(data.data || []);
+        } catch { }
+    };
 
+    useEffect(() => {
+        fetchExams();
+    }, []);
     const startExam = async (exam) => {
+        isNavigatingAway.current = false;
         try {
             const { data } = await api.post(`/cbt/exams/${exam.id}/start`);
             const att = data.attempt;
             const qs = data.questions || [];
 
-            // Resume Logic: Calculate actual time left based on server start time
-            const started = new Date(att.startedAt).getTime();
-            const now = new Date().getTime();
-            const elapsed = Math.floor((now - started) / 1000);
-            const total = (data.exam?.durationMinutes || exam.durationMinutes) * 60;
-            const remaining = Math.max(0, total - elapsed);
+            // Dynamic Time Calculation: Based on questions left to answer
+            // Ratio: (Original Allotted Time / Total Questions) * Questions Remaining
+            // Example: 10 minutes (600s) for 20 questions = 30s per question
+            const durationMins = data.exam?.durationMinutes || exam.durationMinutes || 60;
+            const totalSecs = durationMins * 60;
+            const totalQs = qs.length || 1;
+            const answeredQs = (data.savedAnswers || []).filter(a => !!a.selected).length;
+            const remainingQs = Math.max(0, totalQs - answeredQs);
+
+            // Calculate proportional time left
+            const proportional = Math.floor((totalSecs / totalQs) * remainingQs);
+
+            // Add a 2-minute (120s) pad for students to recompose themselves if resuming
+            const padTime = answeredQs > 0 ? 120 : 0;
+            const remaining = proportional + padTime;
 
             setAttempt(att);
             setQuestions(qs);
@@ -202,8 +213,10 @@ export default function CbtExamPage() {
                 </div>
                 <div className="flex gap-12" style={{ marginLeft: 32 }}>
                     <button className="btn btn-secondary" onClick={() => {
+                        if (!confirm('Pause exam and exit to dashboard? Your current progress will be saved.')) return;
                         isNavigatingAway.current = true;
-                        navigate('/cbt/exam');
+                        setPhase('list');
+                        fetchExams();
                     }} title="Save progress and return to dashboard">
                         Pause & Exit
                     </button>

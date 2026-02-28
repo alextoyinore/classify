@@ -7,6 +7,7 @@ const defaultForm = {
     schoolName: '', schoolAcronym: '', schoolAddress: '',
     schoolEmail: '', schoolPhone: '', logoUrl: '',
     currentSession: '', currentSemester: 'FIRST',
+    attendanceWeight: 10,
 };
 
 export default function SettingsPage() {
@@ -108,6 +109,14 @@ export default function SettingsPage() {
 
                     <div style={{ marginTop: 12, padding: '10px 14px', background: 'var(--amber-dim)', borderRadius: 'var(--radius-sm)', fontSize: '0.82rem', color: 'var(--amber)' }}>
                         ⚠ Changing the active session/semester affects attendance marking and CBT exam windows.
+                    </div>
+
+                    <div className="form-group" style={{ marginTop: 20 }}>
+                        <label>Attendance Weight (Score Max)</label>
+                        <input type="number" placeholder="e.g. 10" value={form.attendanceWeight} onChange={e => setForm(f => ({ ...f, attendanceWeight: Number(e.target.value) }))} />
+                        <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: 4 }}>
+                            This value is used to calculate the attendance score in the aggregate results.
+                        </p>
                     </div>
                 </div>
 

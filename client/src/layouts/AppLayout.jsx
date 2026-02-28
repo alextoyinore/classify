@@ -1,8 +1,9 @@
+import { useState, useEffect } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
     LayoutDashboard, Users, UserCheck, BookOpen, ClipboardCheck,
     FileText, Monitor, Cloud, Settings, LogOut, GraduationCap,
-    ChevronRight, User, Building2, Calendar
+    ChevronRight, User, Building2, Calendar, Menu, X
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
@@ -24,6 +25,8 @@ const nav = [
             { to: '/courses', label: 'Courses', icon: BookOpen },
             { to: '/attendance', label: 'Attendance', icon: ClipboardCheck, roles: ['ADMIN', 'INSTRUCTOR'] },
             { to: '/exams', label: 'Examinations', icon: FileText, roles: ['ADMIN', 'INSTRUCTOR'] },
+            { to: '/results', label: 'Aggregate Results', icon: GraduationCap, roles: ['ADMIN', 'INSTRUCTOR'] },
+            { to: '/my-results', label: 'My Results', icon: GraduationCap, roles: ['STUDENT'] },
             { to: '/academic-sessions', label: 'Academic Sessions', icon: Calendar, roles: ['ADMIN'] },
             { to: '/academic-structure', label: 'Academic Structure', icon: Building2, roles: ['ADMIN'] },
         ]
@@ -45,6 +48,7 @@ const nav = [
 export default function AppLayout({ children }) {
     const { user, logout } = useAuth();
     const navigate = useNavigate();
+    const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
     const handleLogout = async () => {
         await logout();
@@ -58,9 +62,12 @@ export default function AppLayout({ children }) {
         <div className="app-shell">
             {/* Topbar */}
             <header className="topbar">
+                <button className="mobile-menu-btn" onClick={() => setIsSidebarOpen(!isSidebarOpen)}>
+                    {isSidebarOpen ? <X size={24} /> : <Menu size={24} />}
+                </button>
                 <div className="topbar-brand">
                     <GraduationCap size={24} />
-                    Classify
+                    <span>Classify</span>
                 </div>
                 <div className="topbar-spacer" />
                 <div className="flex items-center gap-12">
@@ -81,8 +88,11 @@ export default function AppLayout({ children }) {
                 </div>
             </header>
 
+            {/* Sidebar Backdrop (Mobile) */}
+            {isSidebarOpen && <div className="sidebar-backdrop" onClick={() => setIsSidebarOpen(false)} />}
+
             {/* Sidebar */}
-            <aside className="sidebar">
+            <aside className={`sidebar ${isSidebarOpen ? 'open' : ''}`}>
                 {nav.map(group => {
                     const visibleItems = group.items.filter(
                         item => !item.roles || item.roles.includes(user?.role)
@@ -96,6 +106,7 @@ export default function AppLayout({ children }) {
                                     key={item.to}
                                     to={item.to}
                                     className={({ isActive }) => `sidebar-link${isActive ? ' active' : ''}`}
+                                    onClick={() => setIsSidebarOpen(false)}
                                 >
                                     <item.icon size={18} />
                                     {item.label}

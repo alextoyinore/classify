@@ -23,6 +23,9 @@ import AcademicStructurePage from './pages/AcademicStructurePage';
 import SessionManagementPage from './pages/SessionManagementPage';
 import CbtAnalytics from './pages/CbtAnalytics';
 
+import StudentResultsPage from './pages/StudentResultsPage';
+import MyResultsPage from './pages/MyResultsPage';
+
 function ProtectedRoute({ children, roles }) {
   const { user } = useAuth();
   if (!user) return <Navigate to="/login" replace />;
@@ -54,6 +57,9 @@ function AppRoutes() {
       <Route path="/academic-structure" element={<ProtectedRoute roles={['ADMIN']}><AcademicStructurePage /></ProtectedRoute>} />
       <Route path="/academic-sessions" element={<ProtectedRoute roles={['ADMIN']}><SessionManagementPage /></ProtectedRoute>} />
       <Route path="/exams/:id/analytics" element={<ProtectedRoute roles={['ADMIN', 'INSTRUCTOR']}><CbtAnalytics /></ProtectedRoute>} />
+
+      <Route path="/results" element={<ProtectedRoute roles={['ADMIN', 'INSTRUCTOR']}><StudentResultsPage /></ProtectedRoute>} />
+      <Route path="/my-results" element={<ProtectedRoute roles={['STUDENT']}><MyResultsPage /></ProtectedRoute>} />
 
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>
