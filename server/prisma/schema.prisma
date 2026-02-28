@@ -78,6 +78,8 @@ model User {
   instructor Instructor?
   admin      Admin?
   resources  Resource[]
+  sentMessages     Message[] @relation("SentMessages")
+  receivedMessages Message[] @relation("ReceivedMessages")
 }
 
 // ─── Admin ────────────────────────────────────────────────────────────────────
@@ -404,6 +406,21 @@ model CbtAnswer {
   createdAt  DateTime    @default(now())
 
   @@unique([attemptId, questionId])
+}
+
+// ─── Messaging ─────────────────────────────────────────────────────────────────
+
+model Message {
+  id         String   @id @default(cuid())
+  senderId   String
+  sender     User     @relation("SentMessages", fields: [senderId], references: [id])
+  receiverId String
+  receiver   User     @relation("ReceivedMessages", fields: [receiverId], references: [id])
+  content    String
+  isRead     Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  @@index([senderId, receiverId])
 }
 
 // ─── Cloud Sync ───────────────────────────────────────────────────────────────

@@ -1,0 +1,312 @@
+.messages-container {
+    display: flex;
+    height: calc(100vh - var(--topbar-h, 64px));
+    background: var(--surface);
+    overflow: hidden;
+    margin: -32px;
+    /* Reverse main-content padding */
+}
+
+.messages-sidebar {
+    width: 320px;
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    background: #ffffff;
+    /* White background for participants */
+}
+
+.sidebar-header {
+    padding: 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.sidebar-header h2 {
+    margin: 0;
+    font-size: 1.2rem;
+    font-weight: 600;
+}
+
+.user-search-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.user-search-wrap .search-icon {
+    position: absolute;
+    left: 12px;
+    color: var(--text-muted);
+}
+
+.user-search-wrap input {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 12px 8px 32px;
+    font-size: 0.85rem;
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+.user-search-wrap input:focus {
+    border-color: var(--accent);
+}
+
+.user-list {
+    flex: 1;
+    overflow-y: auto;
+}
+
+.user-item {
+    display: flex;
+    padding: 16px 20px;
+    gap: 12px;
+    cursor: pointer;
+    border-bottom: 1px solid var(--border);
+    transition: background-color 0.2s;
+}
+
+.user-item:hover {
+    background: var(--bg);
+}
+
+.user-item.active {
+    background: #eef5ff;
+    /* Soft blue background */
+    border-left: 3px solid var(--accent);
+    /* Existing blue bar indicator */
+}
+
+.user-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: var(--bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-secondary);
+    position: relative;
+    flex-shrink: 0;
+}
+
+.unread-badge {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    background: var(--danger);
+    color: white;
+    font-size: 0.7rem;
+    font-weight: 700;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid var(--surface);
+}
+
+.user-info {
+    flex: 1;
+    overflow: hidden;
+}
+
+.user-name-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 4px;
+}
+
+.user-name {
+    font-weight: 600;
+    font-size: 0.95rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.last-time {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.user-last-msg {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.messages-main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background-color: #ffffff;
+    /* White background for chat area */
+}
+
+.chat-header {
+    padding: 20px;
+    background: #ffffff;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+}
+
+.chat-header-info h3 {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+.chat-messages {
+    flex: 1;
+    padding: 20px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    gap: 12px;
+}
+
+.chat-empty,
+.chat-placeholder {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-muted);
+}
+
+.chat-placeholder h2 {
+    margin: 0 0 8px;
+    color: var(--text-secondary);
+}
+
+.chat-date-divider {
+    display: flex;
+    justify-content: center;
+    margin: 16px 0;
+}
+
+.chat-date-divider span {
+    background: var(--border);
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.message-bubble {
+    max-width: 100%;
+    min-width: 80px;
+    padding: 10px 14px;
+    border-radius: 18px;
+    word-break: break-word;
+    white-space: pre-wrap;
+    display: inline-block;
+}
+
+.message-bubble.sent {
+    background: var(--accent);
+    color: white;
+    border: none;
+    border-bottom-right-radius: 4px;
+    box-shadow: none;
+}
+
+.message-bubble.received {
+    background: #f0f2f5;
+    border: none;
+    border-bottom-left-radius: 4px;
+    box-shadow: none;
+}
+
+.message-meta {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+}
+
+.chat-input-area {
+    padding: 16px 20px;
+    background: #ffffff;
+    border-top: 1px solid var(--border);
+    display: flex;
+    gap: 12px;
+}
+
+.chat-input-area input {
+    flex: 1;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    padding: 12px 16px;
+    border-radius: 24px;
+    font-size: 0.95rem;
+    outline: none;
+    color: var(--text);
+    transition: border-color 0.2s;
+}
+
+.chat-input-area input:focus {
+    border-color: var(--accent);
+}
+
+.btn-send {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: white;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: transform 0.2s, opacity 0.2s;
+}
+
+.btn-send:hover:not(:disabled) {
+    transform: scale(1.05);
+}
+
+.btn-send:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .messages-container {
+        flex-direction: column;
+        height: calc(100vh - 80px);
+        /* Adjust for mobile header/nav */
+        margin-top: 0;
+        border-radius: 0;
+        border-right: none;
+        border-left: none;
+    }
+
+    .messages-sidebar {
+        width: 100%;
+        height: 30%;
+        /* Or could just implement a slide-over view instead */
+        border-right: none;
+        border-bottom: 1px solid var(--border);
+    }
+}
+
+.empty-state {
+    padding: 20px;
+    text-align: center;
+    color: var(--text-muted);
+}

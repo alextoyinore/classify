@@ -16,6 +16,7 @@ import profileRoutes from './routes/profile.js';
 import facultyRoutes from './routes/faculties.js';
 import departmentRoutes from './routes/departments.js';
 import materialsRoutes from './routes/materials.js';
+import messagesRoutes from './routes/messages.js';
 import { startDeletionWorker } from './lib/deletionWorker.js';
 
 const app = express();
@@ -65,6 +66,7 @@ app.use('/api/profile', profileRoutes);
 app.use('/api/faculties', facultyRoutes);
 app.use('/api/departments', departmentRoutes);
 app.use('/api/materials', materialsRoutes);
+app.use('/api/messages', messagesRoutes);
 
 // ─── 404 Handler ───────────────────────────────────────────
 app.use((req, res) => {
@@ -91,3 +93,5 @@ app.listen(PORT, '0.0.0.0', () => {
 });
 
 export default app;
+
+// Restarting for Prisma Client update (generated)

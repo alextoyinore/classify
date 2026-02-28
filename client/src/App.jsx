@@ -23,6 +23,7 @@ import AcademicStructurePage from './pages/AcademicStructurePage';
 import SessionManagementPage from './pages/SessionManagementPage';
 import CbtAnalytics from './pages/CbtAnalytics';
 import ClassMaterialsPage from './pages/ClassMaterialsPage';
+import MessagesPage from './pages/MessagesPage';
 
 import StudentResultsPage from './pages/StudentResultsPage';
 import MyResultsPage from './pages/MyResultsPage';
@@ -59,6 +60,7 @@ function AppRoutes() {
       <Route path="/academic-sessions" element={<ProtectedRoute roles={['ADMIN']}><SessionManagementPage /></ProtectedRoute>} />
       <Route path="/exams/:id/analytics" element={<ProtectedRoute roles={['ADMIN', 'INSTRUCTOR']}><CbtAnalytics /></ProtectedRoute>} />
       <Route path="/library" element={<ProtectedRoute><ClassMaterialsPage /></ProtectedRoute>} />
+      <Route path="/messages" element={<ProtectedRoute><MessagesPage /></ProtectedRoute>} />
 
       <Route path="/results" element={<ProtectedRoute roles={['ADMIN', 'INSTRUCTOR']}><StudentResultsPage /></ProtectedRoute>} />
       <Route path="/my-results" element={<ProtectedRoute roles={['STUDENT']}><MyResultsPage /></ProtectedRoute>} />

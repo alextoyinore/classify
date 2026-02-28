@@ -6,22 +6,37 @@ const prisma = new PrismaClient();
 async function main() {
     console.log('🌱 Seeding database with test data...');
 
-    // 1. Clear existing data (order matters for FKs)
+    await prisma.syncLog.deleteMany({});
+    await prisma.message.deleteMany({});
+    await prisma.resource.deleteMany({});
+
     await prisma.cbtAnswer.deleteMany({});
     await prisma.cbtAttempt.deleteMany({});
     await prisma.cbtExamQuestion.deleteMany({});
     await prisma.cbtExam.deleteMany({});
     await prisma.cbtQuestion.deleteMany({});
+
     await prisma.score.deleteMany({});
+    await prisma.exam.deleteMany({});
+
     await prisma.attendance.deleteMany({});
+    await prisma.attendanceSession.deleteMany({});
     await prisma.enrollment.deleteMany({});
+
     await prisma.courseInstructor.deleteMany({});
+    await prisma.courseTopic.deleteMany({});
     await prisma.course.deleteMany({});
+
     await prisma.semester_.deleteMany({});
     await prisma.academicSession.deleteMany({});
+
     await prisma.admin.deleteMany({});
     await prisma.student.deleteMany({});
     await prisma.instructor.deleteMany({});
+
+    await prisma.department.deleteMany({});
+    await prisma.faculty.deleteMany({});
+
     await prisma.user.deleteMany({});
 
     // 2. Create Admin User
@@ -51,13 +66,23 @@ async function main() {
     });
     const firstSemester = session.semesters.find(s => s.name === 'FIRST');
 
+    // 3.5 Create Faculty & Department
+    const faculty = await prisma.faculty.create({
+        data: { name: 'Science' }
+    });
+    const dept = await prisma.department.create({
+        data: { name: 'Computer Science', facultyId: faculty.id }
+    });
+
     // 4. Create a Course
     const course = await prisma.course.create({
         data: {
             code: 'CSC101',
             title: 'Introduction to Computer Science',
-            department: 'Computer Science',
-            level: 100,
+            departments: {
+                connect: [{ id: dept.id }]
+            },
+            levels: [100],
             creditUnits: 3
         }
     });
@@ -76,7 +101,7 @@ async function main() {
                     firstName: 'John',
                     lastName: 'Doe',
                     gender: 'MALE',
-                    department: 'Computer Science',
+                    departmentId: dept.id,
                     level: 100,
                     entryYear: '2024'
                 }

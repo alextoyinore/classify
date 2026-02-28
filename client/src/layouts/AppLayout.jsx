@@ -3,7 +3,7 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import {
     LayoutDashboard, Users, UserCheck, BookOpen, ClipboardCheck,
     FileText, Monitor, Cloud, Settings, LogOut, GraduationCap,
-    ChevronRight, User, Building2, Calendar, Menu, X, AlertTriangle, Trash2
+    ChevronRight, User, Building2, Calendar, Menu, X, AlertTriangle, Trash2, MessageSquare
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import api from '../api';
@@ -13,6 +13,7 @@ const nav = [
     {
         section: 'Overview', items: [
             { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+            { to: '/messages', label: 'Messages', icon: MessageSquare },
             { to: '/profile', label: 'My Profile', icon: User },
         ]
     },

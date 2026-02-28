@@ -12,9 +12,11 @@ export default function ClassMaterialsPage() {
     const [filterType, setFilterType] = useState('');
     const [search, setSearch] = useState('');
     const [viewingMaterial, setViewingMaterial] = useState(null);
+    const [restrictionError, setRestrictionError] = useState(null);
 
     const load = async () => {
         setLoading(true);
+        setRestrictionError(null);
         try {
             const [{ data }, { data: cData }] = await Promise.all([
                 api.get('/materials', { params: { courseId: filterCourse, type: filterType } }),
@@ -23,7 +25,12 @@ export default function ClassMaterialsPage() {
             setMaterials(data.data);
             setCourses(cData.data || []);
         } catch (err) {
-            toast('Failed to load materials', 'error');
+            if (err.response?.status === 403) {
+                setRestrictionError(err.response.data.error || 'Access restricted during exam period.');
+            } else {
+                toast('Failed to load materials', 'error');
+            }
+            setMaterials([]);
         }
         setLoading(false);
     };
@@ -84,6 +91,16 @@ export default function ClassMaterialsPage() {
 
             {loading ? (
                 <div className="loading-wrap"><div className="spinner" /></div>
+            ) : restrictionError ? (
+                <div className="empty" style={{ padding: '60px 20px', textAlign: 'center' }}>
+                    <div style={{ background: 'var(--danger)', color: 'white', width: 64, height: 64, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
+                        <GraduationCap size={32} />
+                    </div>
+                    <h2 style={{ fontSize: '1.25rem', marginBottom: '8px' }}>Library Locked</h2>
+                    <p style={{ color: 'var(--danger)', maxWidth: 400, margin: '0 auto', lineHeight: 1.5 }}>
+                        {restrictionError}
+                    </p>
+                </div>
             ) : filtered.length === 0 ? (
                 <div className="empty">
                     <GraduationCap size={48} />

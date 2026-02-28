@@ -79,6 +79,20 @@ router.post('/', requireRole('ADMIN', 'INSTRUCTOR'), upload.single('file'), asyn
 // GET /api/materials - List resources with filters
 router.get('/', async (req, res, next) => {
     try {
+        if (req.user.role === 'STUDENT') {
+            const { isStudentInResourceRestrictionPeriod } = await import('../lib/examRestrictions.js');
+            const studentId = req.user.student?.id;
+
+            if (!studentId) {
+                const stu = await prisma.student.findUnique({ where: { userId: req.user.id } });
+                if (stu && await isStudentInResourceRestrictionPeriod(stu.id)) {
+                    return res.status(403).json({ error: 'Access restricted: You are within the 5-minute pre/post window or actively taking an exam.' });
+                }
+            } else if (await isStudentInResourceRestrictionPeriod(studentId)) {
+                return res.status(403).json({ error: 'Access restricted: You are within the 5-minute pre/post window or actively taking an exam.' });
+            }
+        }
+
         const { courseId, semesterId, type } = req.query;
         const resources = await prisma.resource.findMany({
             where: {
