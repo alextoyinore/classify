@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Send, User as UserIcon, AlertCircle, Search } from 'lucide-react';
+import { Send, User as UserIcon, AlertCircle, Search, ArrowLeft } from 'lucide-react';
 import api from '../api';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
@@ -175,7 +175,7 @@ export default function MessagesPage() {
     });
 
     return (
-        <div className="messages-container">
+        <div className={`messages-container ${selectedUser ? 'mobile-selected' : ''}`}>
             {/* PIN lock overlay */}
             {locked && storedPin && (
                 <MessagesPinLock
@@ -233,6 +233,9 @@ export default function MessagesPage() {
                 {selectedUser ? (
                     <>
                         <div className="chat-header">
+                            <button className="btn-back-mobile" onClick={() => setSelectedUser(null)}>
+                                <ArrowLeft size={20} />
+                            </button>
                             <div className="chat-header-info">
                                 <h3>{getDisplayName(selectedUser)}</h3>
                                 {selectedUser.role === 'STUDENT' && <span className="badge badge-secondary" style={{ marginLeft: '12px' }}>Student</span>}

@@ -1303,7 +1303,7 @@ textarea {
 }
 
 @media (max-width: 768px) {
-  .app-shell {
+  .app-main-layout {
     grid-template-columns: 1fr;
   }
 
