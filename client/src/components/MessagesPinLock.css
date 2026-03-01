@@ -116,7 +116,8 @@
     transition: background 0.15s, transform 0.1s;
 }
 
-.pin-key:hover:not(:disabled) {
+.pin-key:hover:not(:disabled),
+.pin-key.active:not(:disabled) {
     background: var(--accent-dim);
     color: var(--accent);
     border-color: var(--accent);

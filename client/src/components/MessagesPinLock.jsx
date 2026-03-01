@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Lock, X } from 'lucide-react';
 import './MessagesPinLock.css';
 
@@ -12,28 +12,56 @@ import './MessagesPinLock.css';
 export default function MessagesPinLock({ onUnlock, hasPin, onCancel }) {
     const [digits, setDigits] = useState('');
     const [error, setError] = useState('');
+    const [activeKey, setActiveKey] = useState(null);
 
-    const handleDigit = (d) => {
-        if (digits.length >= 6) return;
-        const next = digits + d;
-        setDigits(next);
-        setError('');
-        if (next.length === 4) {
-            // Auto-submit on 4 digits
-            setTimeout(() => {
-                const ok = onUnlock(next);
-                if (!ok) {
-                    setError('Incorrect PIN. Try again.');
-                    setDigits('');
-                }
-            }, 150);
-        }
-    };
+    const handleDigit = useCallback((d) => {
+        setDigits(prev => {
+            if (prev.length >= 4) return prev;
+            const next = prev + d;
+            setError('');
+            if (next.length === 4) {
+                // Auto-submit on 4 digits
+                setTimeout(() => {
+                    const ok = onUnlock(next);
+                    if (!ok) {
+                        setError('Incorrect PIN. Try again.');
+                        setDigits('');
+                    }
+                }, 150);
+            }
+            return next;
+        });
+    }, [onUnlock]);
 
-    const handleBackspace = () => {
+    const handleBackspace = useCallback(() => {
         setDigits(d => d.slice(0, -1));
         setError('');
-    };
+    }, []);
+
+    useEffect(() => {
+        const handleKeyDown = (e) => {
+            if (e.key >= '0' && e.key <= '9') {
+                setActiveKey(e.key);
+                handleDigit(e.key);
+            } else if (e.key === 'Backspace') {
+                setActiveKey('Backspace');
+                handleBackspace();
+            }
+        };
+
+        const handleKeyUp = (e) => {
+            if ((e.key >= '0' && e.key <= '9') || e.key === 'Backspace') {
+                setActiveKey(null);
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        window.addEventListener('keyup', handleKeyUp);
+        return () => {
+            window.removeEventListener('keydown', handleKeyDown);
+            window.removeEventListener('keyup', handleKeyUp);
+        };
+    }, [handleDigit, handleBackspace]);
 
     return (
         <div className="pin-lock-overlay">
@@ -58,13 +86,27 @@ export default function MessagesPinLock({ onUnlock, hasPin, onCancel }) {
                 {/* Number pad */}
                 <div className="pin-pad">
                     {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(n => (
-                        <button key={n} className="pin-key" onClick={() => handleDigit(String(n))}>
+                        <button
+                            key={n}
+                            className={`pin-key ${activeKey === String(n) ? 'active' : ''}`}
+                            onClick={() => handleDigit(String(n))}
+                        >
                             {n}
                         </button>
                     ))}
                     <button className="pin-key pin-key-empty" disabled />
-                    <button className="pin-key" onClick={() => handleDigit('0')}>0</button>
-                    <button className="pin-key pin-key-back" onClick={handleBackspace}>⌫</button>
+                    <button
+                        className={`pin-key ${activeKey === '0' ? 'active' : ''}`}
+                        onClick={() => handleDigit('0')}
+                    >
+                        0
+                    </button>
+                    <button
+                        className={`pin-key pin-key-back ${activeKey === 'Backspace' ? 'active' : ''}`}
+                        onClick={handleBackspace}
+                    >
+                        ⌫
+                    </button>
                 </div>
 
                 {onCancel && (
