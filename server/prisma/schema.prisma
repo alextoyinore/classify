@@ -62,6 +62,16 @@ enum ResourceType {
   OTHER
 }
 
+enum DayOfWeek {
+  MONDAY
+  TUESDAY
+  WEDNESDAY
+  THURSDAY
+  FRIDAY
+  SATURDAY
+  SUNDAY
+}
+
 // ─── Core User / Auth ─────────────────────────────────────────────────────────
 
 model User {
@@ -152,6 +162,7 @@ model Instructor {
   updatedAt     DateTime    @updatedAt
 
   courseAssignments CourseInstructor[]
+  timetableEntries  TimetableEntry[]
 }
 
 // ─── Academic Session ─────────────────────────────────────────────────────────
@@ -182,6 +193,7 @@ model Semester_ {
   cbtExams       CbtExam[]
   activeSessions AttendanceSession[]
   resources      Resource[]
+  timetableEntries TimetableEntry[]
 
   @@unique([sessionId, name])
 }
@@ -210,6 +222,7 @@ model Course {
   activeSessions AttendanceSession[]
   topics         CourseTopic[]
   resources      Resource[]
+  timetableEntries TimetableEntry[]
 }
 
 model CourseTopic {
@@ -480,6 +493,7 @@ model Department {
   instructors        Instructor[]
   courses            Course[]
   attendanceSessions AttendanceSession[]
+  timetableEntries   TimetableEntry[]
 
   @@unique([facultyId, name])
 }
@@ -505,4 +519,28 @@ model Resource {
 
   @@index([courseId])
   @@index([semesterId])
+}
+
+model TimetableEntry {
+  id           String      @id @default(cuid())
+  courseId     String
+  course       Course      @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  instructorId String?
+  instructor   Instructor? @relation(fields: [instructorId], references: [id])
+  semesterId   String
+  semester     Semester_   @relation(fields: [semesterId], references: [id], onDelete: Cascade)
+  departmentId String?
+  department   Department? @relation(fields: [departmentId], references: [id])
+  dayOfWeek    DayOfWeek
+  startTime    String      // HH:mm
+  endTime      String      // HH:mm
+  location     String?
+  level        Int
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  @@index([courseId])
+  @@index([semesterId])
+  @@index([departmentId])
+  @@index([instructorId])
 }

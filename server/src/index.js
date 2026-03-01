@@ -17,6 +17,7 @@ import facultyRoutes from './routes/faculties.js';
 import departmentRoutes from './routes/departments.js';
 import materialsRoutes from './routes/materials.js';
 import messagesRoutes from './routes/messages.js';
+import timetableRoutes from './routes/timetable.js';
 import { startDeletionWorker } from './lib/deletionWorker.js';
 
 const app = express();
@@ -67,6 +68,7 @@ app.use('/api/faculties', facultyRoutes);
 app.use('/api/departments', departmentRoutes);
 app.use('/api/materials', materialsRoutes);
 app.use('/api/messages', messagesRoutes);
+app.use('/api/timetable', timetableRoutes);
 
 // ─── 404 Handler ───────────────────────────────────────────
 app.use((req, res) => {

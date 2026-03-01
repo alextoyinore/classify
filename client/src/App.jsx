@@ -29,6 +29,7 @@ import MyResultsPage from './pages/MyResultsPage';
 import AboutPage from './pages/AboutPage';
 import HowToUsePage from './pages/HowToUsePage';
 import FAQPage from './pages/FAQPage';
+import TimetableBuilderPage from './pages/TimetableBuilderPage';
 
 function ProtectedRoute({ children, roles }) {
   const { user } = useAuth();
@@ -63,6 +64,7 @@ function AppRoutes() {
       <Route path="/exams/:id/analytics" element={<ProtectedRoute roles={['ADMIN', 'INSTRUCTOR']}><CbtAnalytics /></ProtectedRoute>} />
       <Route path="/library" element={<ProtectedRoute><ClassMaterialsPage /></ProtectedRoute>} />
       <Route path="/messages" element={<ProtectedRoute><MessagesPage /></ProtectedRoute>} />
+      <Route path="/timetable" element={<ProtectedRoute roles={['ADMIN', 'INSTRUCTOR']}><TimetableBuilderPage /></ProtectedRoute>} />
 
       <Route path="/results" element={<ProtectedRoute roles={['ADMIN', 'INSTRUCTOR']}><StudentResultsPage /></ProtectedRoute>} />
       <Route path="/my-results" element={<ProtectedRoute roles={['STUDENT']}><MyResultsPage /></ProtectedRoute>} />

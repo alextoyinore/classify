@@ -33,6 +33,7 @@ const nav = [
             { to: '/my-results', label: 'My Results', icon: GraduationCap, roles: ['STUDENT'] },
             { to: '/academic-sessions', label: 'Academic Sessions', icon: Calendar, roles: ['ADMIN'] },
             { to: '/academic-structure', label: 'Academic Structure', icon: Building2, roles: ['ADMIN'] },
+            { to: '/timetable', label: 'Timetable Builder', icon: Calendar, roles: ['ADMIN', 'INSTRUCTOR'] },
         ]
     },
     {
