@@ -3,7 +3,7 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import {
     LayoutDashboard, Users, UserCheck, BookOpen, ClipboardCheck,
     FileText, Monitor, Cloud, Settings, LogOut, GraduationCap,
-    ChevronRight, User, Building2, Calendar, Menu, X, AlertTriangle, Trash2, MessageSquare
+    ChevronRight, User, Building2, Calendar, Menu, X, AlertTriangle, Trash2, MessageSquare, Info, HelpCircle
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import api from '../api';
@@ -47,6 +47,13 @@ const nav = [
             { to: '/settings', label: 'Settings', icon: Settings, roles: ['ADMIN'] },
         ]
     },
+    {
+        section: 'Help & Info', items: [
+            { to: '/how-to-use', label: 'How to Use', icon: BookOpen },
+            { to: '/faqs', label: 'FAQs', icon: HelpCircle },
+            { to: '/about', label: 'About', icon: Info },
+        ]
+    }
 ];
 
 export default function AppLayout({ children }) {

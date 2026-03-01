@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
-import { User, Phone, MapPin, Mail, Lock, Shield, Save, Camera, ClipboardCheck } from 'lucide-react';
+import { User, Phone, MapPin, Mail, Lock, Shield, Save, Camera, ClipboardCheck, MessageSquare } from 'lucide-react';
 import api from '../api';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
+import { getStoredPin, setStoredPin, verifyPin } from '../utils/messagesPin';
 
 export default function ProfilePage() {
     const { user } = useAuth();
@@ -11,6 +12,11 @@ export default function ProfilePage() {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [pwForm, setPwForm] = useState({ currentPassword: '', newPassword: '' });
+
+    // Messages PIN state
+    const [hasPin, setHasPin] = useState(() => user ? !!getStoredPin(user.id) : false);
+    const [pinForm, setPinForm] = useState({ current: '', newPin: '', confirm: '' });
+    const [pinMsg, setPinMsg] = useState({ text: '', isError: false });
 
     // Active sessions for students
     const [activeSessions, setActiveSessions] = useState([]);
@@ -84,6 +90,27 @@ export default function ProfilePage() {
         } catch (err) {
             toast(err.response?.data?.error || 'Password change failed', 'error');
         }
+    };
+
+    const handleSetPin = (e) => {
+        e.preventDefault();
+        const { current, newPin, confirm } = pinForm;
+        if (!/^\d{4}$/.test(newPin)) return setPinMsg({ text: 'PIN must be exactly 4 digits.', isError: true });
+        if (newPin !== confirm) return setPinMsg({ text: 'PINs do not match.', isError: true });
+        if (hasPin && !verifyPin(user.id, current)) return setPinMsg({ text: 'Current PIN is incorrect.', isError: true });
+        setStoredPin(user.id, newPin);
+        setHasPin(true);
+        setPinForm({ current: '', newPin: '', confirm: '' });
+        setPinMsg({ text: hasPin ? 'PIN updated successfully.' : 'PIN set successfully.', isError: false });
+    };
+
+    const handleRemovePin = () => {
+        if (!pinForm.current) return setPinMsg({ text: 'Enter current PIN to remove it.', isError: true });
+        if (!verifyPin(user.id, pinForm.current)) return setPinMsg({ text: 'Incorrect PIN.', isError: true });
+        setStoredPin(user.id, null);
+        setHasPin(false);
+        setPinForm({ current: '', newPin: '', confirm: '' });
+        setPinMsg({ text: 'PIN removed.', isError: false });
     };
 
     const setField = (field, value) => {
@@ -293,6 +320,77 @@ export default function ProfilePage() {
                         <button type="submit" className="btn btn-secondary w-full">
                             <Lock size={16} /> Update Password
                         </button>
+                    </form>
+
+                    {/* Messages PIN */}
+                    <form className="card" onSubmit={handleSetPin}>
+                        <div className="flex items-center gap-12 mb-20">
+                            <div className="stat-icon" style={{ background: '#f0f2f5', color: 'var(--accent)', padding: 8, borderRadius: 8 }}>
+                                <MessageSquare size={20} />
+                            </div>
+                            <div>
+                                <h2 style={{ fontSize: '1rem', fontWeight: 700 }}>Messages PIN</h2>
+                                <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', margin: 0 }}>
+                                    {hasPin ? 'PIN active — messages page is protected' : 'No PIN set — messages page is open'}
+                                </p>
+                            </div>
+                        </div>
+
+                        {hasPin && (
+                            <div className="form-group mb-12">
+                                <label>Current PIN</label>
+                                <input
+                                    type="password"
+                                    inputMode="numeric"
+                                    maxLength={4}
+                                    placeholder="••••"
+                                    value={pinForm.current}
+                                    onChange={e => setPinForm(f => ({ ...f, current: e.target.value.replace(/\D/g, '') }))}
+                                />
+                            </div>
+                        )}
+
+                        <div className="form-row mb-12">
+                            <div className="form-group">
+                                <label>New PIN (4 digits)</label>
+                                <input
+                                    type="password"
+                                    inputMode="numeric"
+                                    maxLength={4}
+                                    placeholder="••••"
+                                    value={pinForm.newPin}
+                                    onChange={e => setPinForm(f => ({ ...f, newPin: e.target.value.replace(/\D/g, '') }))}
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label>Confirm PIN</label>
+                                <input
+                                    type="password"
+                                    inputMode="numeric"
+                                    maxLength={4}
+                                    placeholder="••••"
+                                    value={pinForm.confirm}
+                                    onChange={e => setPinForm(f => ({ ...f, confirm: e.target.value.replace(/\D/g, '') }))}
+                                />
+                            </div>
+                        </div>
+
+                        {pinMsg.text && (
+                            <p style={{ fontSize: '0.8rem', color: pinMsg.isError ? 'var(--danger)' : 'var(--success)', marginBottom: 12 }}>
+                                {pinMsg.text}
+                            </p>
+                        )}
+
+                        <div className="flex gap-8">
+                            <button type="submit" className="btn btn-primary">
+                                <Lock size={14} /> {hasPin ? 'Update PIN' : 'Set PIN'}
+                            </button>
+                            {hasPin && (
+                                <button type="button" className="btn btn-secondary" onClick={handleRemovePin}>
+                                    Remove PIN
+                                </button>
+                            )}
+                        </div>
                     </form>
 
                     {/* Role Info */}

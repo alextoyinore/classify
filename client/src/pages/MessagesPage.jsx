@@ -1,8 +1,10 @@
-import { useState, useEffect, useRef } from 'react';
-import { Send, User as UserIcon, AlertCircle, Clock, Search } from 'lucide-react';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { Send, User as UserIcon, AlertCircle, Search } from 'lucide-react';
 import api from '../api';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
+import MessagesPinLock from '../components/MessagesPinLock';
+import { getStoredPin, verifyPin, markUnlocked, clearUnlocked, isUnlocked, refreshUnlock, LOCK_TIMEOUT } from '../utils/messagesPin';
 import './MessagesPage.css';
 
 export default function MessagesPage() {
@@ -18,6 +20,51 @@ export default function MessagesPage() {
     const [sending, setSending] = useState(false);
     const messagesEndRef = useRef(null);
     const pollInterval = useRef(null);
+    const inactivityTimer = useRef(null);
+
+    // PIN lock state
+    const storedPin = user ? getStoredPin(user.id) : null;
+    const [locked, setLocked] = useState(() => {
+        if (!user || !getStoredPin(user.id)) return false;
+        return !isUnlocked(user.id);
+    });
+
+    const resetInactivityTimer = useCallback(() => {
+        if (!user || !getStoredPin(user.id)) return;
+        clearTimeout(inactivityTimer.current);
+        refreshUnlock(user.id);
+        inactivityTimer.current = setTimeout(() => {
+            clearUnlocked(user.id);
+            setLocked(true);
+        }, LOCK_TIMEOUT);
+    }, [user]);
+
+    // Start inactivity timer when unlocked, and lock on navigation away
+    useEffect(() => {
+        if (!storedPin) return;
+        if (locked) return;
+        resetInactivityTimer();
+        const events = ['mousemove', 'keydown', 'click', 'touchstart'];
+        events.forEach(e => window.addEventListener(e, resetInactivityTimer));
+        return () => {
+            clearTimeout(inactivityTimer.current);
+            events.forEach(e => window.removeEventListener(e, resetInactivityTimer));
+            // Lock when navigating away
+            if (user && getStoredPin(user.id)) {
+                clearUnlocked(user.id);
+                setLocked(true);
+            }
+        };
+    }, [locked, storedPin, resetInactivityTimer, user]);
+
+    const handlePinUnlock = (attempt) => {
+        if (verifyPin(user.id, attempt)) {
+            markUnlocked(user.id);
+            setLocked(false);
+            return true;
+        }
+        return false;
+    };
 
     const fetchUsers = async () => {
         try {
@@ -129,6 +176,13 @@ export default function MessagesPage() {
 
     return (
         <div className="messages-container">
+            {/* PIN lock overlay */}
+            {locked && storedPin && (
+                <MessagesPinLock
+                    hasPin={true}
+                    onUnlock={handlePinUnlock}
+                />
+            )}
             <div className="messages-sidebar">
                 <div className="sidebar-header">
                     <h2>Messages</h2>

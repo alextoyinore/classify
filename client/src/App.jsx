@@ -24,9 +24,11 @@ import SessionManagementPage from './pages/SessionManagementPage';
 import CbtAnalytics from './pages/CbtAnalytics';
 import ClassMaterialsPage from './pages/ClassMaterialsPage';
 import MessagesPage from './pages/MessagesPage';
-
 import StudentResultsPage from './pages/StudentResultsPage';
 import MyResultsPage from './pages/MyResultsPage';
+import AboutPage from './pages/AboutPage';
+import HowToUsePage from './pages/HowToUsePage';
+import FAQPage from './pages/FAQPage';
 
 function ProtectedRoute({ children, roles }) {
   const { user } = useAuth();
@@ -64,6 +66,10 @@ function AppRoutes() {
 
       <Route path="/results" element={<ProtectedRoute roles={['ADMIN', 'INSTRUCTOR']}><StudentResultsPage /></ProtectedRoute>} />
       <Route path="/my-results" element={<ProtectedRoute roles={['STUDENT']}><MyResultsPage /></ProtectedRoute>} />
+
+      <Route path="/about" element={<ProtectedRoute><AboutPage /></ProtectedRoute>} />
+      <Route path="/how-to-use" element={<ProtectedRoute><HowToUsePage /></ProtectedRoute>} />
+      <Route path="/faqs" element={<ProtectedRoute><FAQPage /></ProtectedRoute>} />
 
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>
