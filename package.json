@@ -1,0 +1,19 @@
+{
+  "name": "classify-root",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "install-all": "npm install && npm install --prefix client && npm install --prefix server && npm install --prefix service-manager",
+    "build-client": "npm run build --prefix client",
+    "db:generate": "npm run db:generate --prefix server",
+    "db:push": "npm run db:push --prefix server",
+    "bundle-backend": "node build-backend.js",
+    "build-all": "npm run build-client && npm run db:generate && npm run bundle-backend",
+    "start": "node server/dist/index.js",
+    "dev": "npm start --prefix service-manager"
+  },
+  "devDependencies": {
+    "esbuild": "^0.27.4"
+  }
+}

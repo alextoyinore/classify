@@ -2,6 +2,8 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import 'dotenv/config';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import authRoutes from './routes/auth.js';
 import studentRoutes from './routes/students.js';
 import instructorRoutes from './routes/instructors.js';
@@ -19,6 +21,9 @@ import materialsRoutes from './routes/materials.js';
 import messagesRoutes from './routes/messages.js';
 import timetableRoutes from './routes/timetable.js';
 import { startDeletionWorker } from './lib/deletionWorker.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -47,6 +52,11 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 app.use('/uploads', express.static('uploads'));
 
+// ─── Static Files (Production) ──────────────────────────────
+// In the bundled/production version, the client is moved to a 'public' folder next to the script
+const clientDistPath = path.join(__dirname, 'public');
+app.use(express.static(clientDistPath));
+
 // ─── Health check ──────────────────────────────────────────
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString(), app: 'Classify API' });
@@ -69,6 +79,20 @@ app.use('/api/departments', departmentRoutes);
 app.use('/api/materials', materialsRoutes);
 app.use('/api/messages', messagesRoutes);
 app.use('/api/timetable', timetableRoutes);
+
+// ─── Catch-all for React Router (SPA) ──────────────────────
+app.get('*', (req, res, next) => {
+  // If the request is for an API route, let it fall through to 404 handler
+  if (req.path.startsWith('/api/')) {
+    return next();
+  }
+  res.sendFile(path.join(clientDistPath, 'index.html'), (err) => {
+    if (err) {
+      // If index.html is missing (e.g. not built yet), return 404
+      next();
+    }
+  });
+});
 
 // ─── 404 Handler ───────────────────────────────────────────
 app.use((req, res) => {
