@@ -2,11 +2,16 @@ import axios from 'axios';
 
 const getApiBase = () => {
     const envUrl = import.meta.env.VITE_API_URL;
-    if (envUrl && !envUrl.includes('localhost') && !envUrl.includes('127.0.0.1')) {
+    
+    // If using the Vite dev server, we can use the envUrl if it's set
+    // Otherwise in production/packaged builds, we should be dynamic
+    if (import.meta.env.DEV && envUrl) {
         return envUrl;
     }
-    // Fallback to current hostname (covers both localhost and LAN IP access)
-    return `http://${window.location.hostname}:5000/api`;
+
+    // In production, we're served from the backend (port 5000)
+    // Using a relative path is the most portable and robust
+    return '/api';
 };
 
 const API_BASE = getApiBase();

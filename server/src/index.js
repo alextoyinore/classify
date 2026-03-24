@@ -37,6 +37,9 @@ app.use(helmet({
       "frame-ancestors": ["'self'", "*"], // Allow embedding from the same app/host
       "img-src": ["'self'", "data:", "blob:", "*"],
       "media-src": ["'self'", "data:", "blob:", "*"],
+      "script-src": ["'self'", "'sha256-XA3xPNZkdcgKoOBN/IQGq9SMAyznI1ACq2XzQVMZPic='"],
+      "connect-src": ["'self'", "http:", "https:", "ws:", "wss:", "*"],
+      "upgrade-insecure-requests": null,
     },
   },
   frameguard: false, // Disable X-Frame-Options to favor CSP frame-ancestors
