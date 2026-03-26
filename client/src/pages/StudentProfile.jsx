@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { ArrowLeft, User, Mail, Phone, MapPin, Calendar, Book, ClipboardCheck, Award } from 'lucide-react';
 import api from '../api';
+import { useAuth } from '../context/AuthContext';
 
 function InfoRow({ icon: Icon, label, value }) {
     if (!value) return null;
@@ -16,6 +17,7 @@ function InfoRow({ icon: Icon, label, value }) {
 
 export default function StudentProfile() {
     const { id } = useParams();
+    const { isAdmin } = useAuth();
     const [student, setStudent] = useState(null);
     const [attendance, setAttendance] = useState([]);
     const [scores, setScores] = useState([]);
@@ -28,15 +30,25 @@ export default function StudentProfile() {
                 const [sRes, aRes, scRes] = await Promise.all([
                     api.get(`/students/${id}`),
                     api.get(`/students/${id}/attendance`),
-                    api.get(`/students/${id}/scores`),
+                    api.get(`/students/${id}/transcript`),
                 ]);
-                setStudent(sRes.data);
-                setAttendance(aRes.data || []);
-                setScores(scRes.data || []);
+                setStudent(sRes.data.student);          // unwrap { student: ... }
+                setAttendance(aRes.data.records || []); // unwrap { records, summary }
+                setScores(scRes.data.scores || []);     // unwrap { scores }
             } catch { }
             setLoading(false);
         })();
     }, [id]);
+
+    const handleResetPassword = async () => {
+        if (!window.confirm(`Reset password to default (Matric Number) for ${student.firstName}?`)) return;
+        try {
+            const { data } = await api.post(`/students/${id}/reset-password`);
+            alert(`Password has been successfully reset.\n\nThe new password is: ${data.defaultPassword}`);
+        } catch (err) {
+            alert(err.response?.data?.error || 'Failed to reset password');
+        }
+    };
 
     if (loading) return <div className="loading-wrap"><div className="spinner" /></div>;
     if (!student) return <div className="empty"><p>Student not found.</p></div>;
@@ -95,6 +107,14 @@ export default function StudentProfile() {
                     <InfoRow icon={User} label="Gender" value={s.gender} />
                     <InfoRow icon={Book} label="Faculty" value={s.faculty?.name || s.faculty || '—'} />
                     <InfoRow icon={Award} label="Entry Year" value={s.entryYear} />
+                    {s.user && isAdmin && (
+                        <div className="flex items-center gap-12" style={{ padding: '10px 0', borderBottom: '1px solid var(--border)' }}>
+                            <User size={16} color="var(--text-muted)" style={{ flexShrink: 0 }} />
+                            <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', width: 120, flexShrink: 0 }}>Password</span>
+                            <span style={{ fontSize: '0.9rem', fontWeight: 500, color: 'var(--text-muted)' }}>•••••••• (Hidden for security)</span>
+                            <button className="btn btn-secondary btn-sm" style={{ marginLeft: 'auto' }} onClick={handleResetPassword}>Reset to Matric Number</button>
+                        </div>
+                    )}
                 </div>
             )}
 

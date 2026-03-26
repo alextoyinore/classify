@@ -72,7 +72,8 @@ export default function ProfilePage() {
         setSaving(true);
         try {
             const roleData = profile.student || profile.instructor || profile.admin;
-            await api.put('/profile', roleData);
+            const payload = { ...roleData, email: profile.email };
+            await api.put('/profile', payload);
             toast('Profile updated successfully');
         } catch (err) {
             toast(err.response?.data?.error || 'Update failed', 'error');
@@ -182,10 +183,14 @@ export default function ProfilePage() {
 
                         <div className="form-group mb-16">
                             <label>Email Address</label>
-                            <div className="flex items-center gap-8 text-secondary" style={{ fontSize: '0.9rem', padding: '10px 0' }}>
-                                <Mail size={16} /> {profile.email}
-                                <span className="badge badge-green">Verified</span>
-                            </div>
+                            <input 
+                                type="email"
+                                value={profile.email || ''}
+                                onChange={e => setProfile(p => ({ ...p, email: e.target.value }))}
+                                placeholder="Enter your email address"
+                                required 
+                            />
+                            {user.role !== 'STUDENT' && <div className="text-secondary" style={{ fontSize: '0.75rem', marginTop: 4 }}>Verified</div>}
                         </div>
 
                         {user.role === 'ADMIN' ? (
@@ -267,6 +272,24 @@ export default function ProfilePage() {
                                         </select>
                                     </div>
                                 </div>
+                                
+                                {user.role === 'STUDENT' && (
+                                    <div className="form-row mb-16">
+                                        <div className="form-group">
+                                            <label>Academic Level</label>
+                                            <select value={roleProfile.level || ''} onChange={e => setField('level', e.target.value)}>
+                                                <option value="" disabled>Select Level</option>
+                                                <option value="100">100L</option>
+                                                <option value="200">200L</option>
+                                                <option value="300">300L</option>
+                                                <option value="400">400L</option>
+                                                <option value="500">500L</option>
+                                                <option value="600">600L</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                )}
+
                                 <div className="form-group mb-24">
                                     <label>Address</label>
                                     <textarea

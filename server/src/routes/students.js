@@ -237,6 +237,24 @@ router.delete('/:id', requireRole('ADMIN'), async (req, res, next) => {
     } catch (err) { next(err); }
 });
 
+// POST /api/students/:id/reset-password
+router.post('/:id/reset-password', requireRole('ADMIN'), async (req, res, next) => {
+    try {
+        const student = await prisma.student.findUnique({ where: { id: req.params.id } });
+        if (!student) return res.status(404).json({ error: 'Student not found' });
+        
+        const defaultPassword = student.matricNumber.toUpperCase().trim();
+        const hashed = await bcrypt.hash(defaultPassword, 12);
+        
+        await prisma.user.update({
+            where: { id: student.userId },
+            data: { password: hashed }
+        });
+        
+        res.json({ message: `Password reset to defaults`, defaultPassword });
+    } catch (err) { next(err); }
+});
+
 // GET /api/students/:id/attendance?courseId=&semesterId=
 router.get('/:id/attendance', requireRole('ADMIN', 'INSTRUCTOR'), async (req, res, next) => {
     try {

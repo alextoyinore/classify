@@ -15,6 +15,10 @@ export default function MessagesPage() {
     const [messages, setMessages] = useState([]);
     const [inputText, setInputText] = useState('');
     const [userSearch, setUserSearch] = useState('');
+    const [departmentFilter, setDepartmentFilter] = useState('');
+    const [levelFilter, setLevelFilter] = useState('');
+    const [departments, setDepartments] = useState([]);
+    
     const [loadingUsers, setLoadingUsers] = useState(true);
     const [loadingMessages, setLoadingMessages] = useState(false);
     const [sending, setSending] = useState(false);
@@ -91,6 +95,13 @@ export default function MessagesPage() {
     };
 
     useEffect(() => {
+        const loadDeps = async () => {
+            try {
+                const res = await api.get('/departments');
+                setDepartments(res.data || []);
+            } catch {}
+        };
+        loadDeps();
         fetchUsers();
         // Poll for new users/unread counts every 15s
         const userPoll = setInterval(fetchUsers, 15000);
@@ -167,6 +178,17 @@ export default function MessagesPage() {
     };
 
     const filteredUsers = users.filter(u => {
+        // Only apply department/level constraints to other students
+        if (u.role === 'STUDENT') {
+            if (departmentFilter) {
+                const uDeptId = u.student?.departmentId;
+                if (uDeptId !== departmentFilter) return false;
+            }
+            if (levelFilter) {
+                if (String(u.student?.level) !== levelFilter) return false;
+            }
+        }
+
         if (!userSearch) return true;
         const searchLower = userSearch.toLowerCase();
         const name = String(getDisplayName(u)).toLowerCase();
@@ -195,6 +217,18 @@ export default function MessagesPage() {
                             onChange={(e) => setUserSearch(e.target.value)}
                         />
                     </div>
+                    {user?.role === 'STUDENT' && (
+                        <div className="flex gap-8" style={{ marginTop: 12, padding: '0 16px', boxSizing: 'border-box' }}>
+                            <select value={departmentFilter} onChange={e => setDepartmentFilter(e.target.value)} style={{ flex: 1, padding: '6px 8px', fontSize: '0.8rem', borderRadius: 6, border: '1px solid var(--border)' }}>
+                                <option value="">All Depts</option>
+                                {departments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                            </select>
+                            <select value={levelFilter} onChange={e => setLevelFilter(e.target.value)} style={{ width: 80, padding: '6px 8px', fontSize: '0.8rem', borderRadius: 6, border: '1px solid var(--border)' }}>
+                                <option value="">All Lvl</option>
+                                {[100, 200, 300, 400, 500, 600].map(l => <option key={l} value={l}>{l}L</option>)}
+                            </select>
+                        </div>
+                    )}
                 </div>
                 <div className="user-list">
                     {loadingUsers ? (

@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { Save, Settings } from 'lucide-react';
+import { useEffect, useState, useRef } from 'react';
+import { Save, Settings, Upload, RefreshCw } from 'lucide-react';
 import api from '../api';
 import { useToast } from '../context/ToastContext';
 
@@ -16,12 +16,24 @@ export default function SettingsPage() {
     const [form, setForm] = useState(defaultForm);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+    const [uploadingLogo, setUploadingLogo] = useState(false);
+    const [sessionInfo, setSessionInfo] = useState(null);
+    const logoInputRef = useRef(null);
 
     useEffect(() => {
         (async () => {
             try {
-                const { data } = await api.get('/settings');
-                setForm({ ...defaultForm, ...data.settings });
+                const [{ data: settingsData }, { data: activeSession }] = await Promise.all([
+                    api.get('/settings'),
+                    api.get('/settings/active-session'),
+                ]);
+                setSessionInfo(activeSession);
+                setForm({ 
+                    ...defaultForm, 
+                    ...settingsData.settings,
+                    currentSession: activeSession?.currentSession || settingsData.settings?.currentSession || defaultForm.currentSession,
+                    currentSemester: activeSession?.currentSemester || settingsData.settings?.currentSemester || defaultForm.currentSemester,
+                });
             } catch { }
             setLoading(false);
         })();
@@ -37,6 +49,25 @@ export default function SettingsPage() {
             toast(err.response?.data?.error || 'Failed to save', 'error');
         }
         setSaving(false);
+    };
+
+
+    const handleLogoUpload = async (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        setUploadingLogo(true);
+        try {
+            const formData = new FormData();
+            formData.append('logo', file);
+            const { data } = await api.post('/settings/logo', formData, {
+                headers: { 'Content-Type': 'multipart/form-data' },
+            });
+            setForm(f => ({ ...f, logoUrl: data.logoUrl }));
+            toast('Logo uploaded successfully');
+        } catch (err) {
+            toast(err.response?.data?.error || 'Upload failed', 'error');
+        }
+        setUploadingLogo(false);
     };
 
     const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
@@ -90,9 +121,68 @@ export default function SettingsPage() {
                     </div>
                 </div>
 
+                {/* Logo */}
+                <div className="card" style={{ marginBottom: 20 }}>
+                    <h2 style={{ fontWeight: 700, fontSize: '1rem', marginBottom: 16 }}>Institution Logo</h2>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap' }}>
+                        {/* Preview */}
+                        <div style={{
+                            width: 80, height: 80, borderRadius: 'var(--radius-sm)',
+                            border: '2px dashed var(--border)', display: 'flex',
+                            alignItems: 'center', justifyContent: 'center',
+                            background: 'var(--bg-body)', flexShrink: 0, overflow: 'hidden'
+                        }}>
+                            {form.logoUrl ? (
+                                <img src={form.logoUrl} alt="Logo"
+                                    style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                                    onError={e => e.target.style.display = 'none'}
+                                />
+                            ) : (
+                                <Upload size={24} color="var(--text-muted)" />
+                            )}
+                        </div>
+                        <div style={{ flex: 1 }}>
+                            <input
+                                ref={logoInputRef}
+                                type="file"
+                                accept="image/*"
+                                style={{ display: 'none' }}
+                                onChange={handleLogoUpload}
+                            />
+                            <button
+                                type="button"
+                                className="btn btn-secondary"
+                                onClick={() => logoInputRef.current?.click()}
+                                disabled={uploadingLogo}
+                                style={{ marginBottom: 8 }}
+                            >
+                                <Upload size={14} />
+                                {uploadingLogo ? 'Uploading…' : 'Upload Logo'}
+                            </button>
+                            <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', margin: 0 }}>
+                                PNG, JPG or SVG · Max 5MB. Alternatively paste a URL below.
+                            </p>
+                            <input
+                                style={{ marginTop: 8 }}
+                                placeholder="or paste a URL: https://…/logo.png"
+                                value={form.logoUrl}
+                                onChange={set('logoUrl')}
+                            />
+                        </div>
+                    </div>
+                </div>
+
                 {/* Academic session */}
                 <div className="card" style={{ marginBottom: 20 }}>
-                    <h2 style={{ fontWeight: 700, fontSize: '1rem', marginBottom: 20 }}>Current Academic Session</h2>
+                    <div className="flex items-center justify-between" style={{ marginBottom: 20 }}>
+                        <h2 style={{ fontWeight: 700, fontSize: '1rem', margin: 0 }}>Current Academic Session</h2>
+                    </div>
+
+                    {sessionInfo?.currentSession && (
+                        <div style={{ marginBottom: 16, padding: '8px 12px', background: 'var(--accent-dim)', borderRadius: 'var(--radius-sm)', fontSize: '0.82rem', color: 'var(--accent)' }}>
+                            ✓ Active in DB: <strong>{sessionInfo.currentSession}</strong> — <strong>{sessionInfo.currentSemester === 'FIRST' ? 'First' : 'Second'} Semester</strong>
+                        </div>
+                    )}
 
                     <div className="form-row">
                         <div className="form-group">
@@ -127,21 +217,6 @@ export default function SettingsPage() {
                             Number of days after scheduling a full wipe before the manual deletion banner appears for admins. Default is 3 days.
                         </p>
                     </div>
-                </div>
-
-                {/* Logo */}
-                <div className="card" style={{ marginBottom: 24 }}>
-                    <h2 style={{ fontWeight: 700, fontSize: '1rem', marginBottom: 16 }}>Logo</h2>
-                    <div className="form-group">
-                        <label>Logo URL</label>
-                        <input placeholder="https://…/logo.png or /logo.png" value={form.logoUrl} onChange={set('logoUrl')} />
-                    </div>
-                    {form.logoUrl && (
-                        <img src={form.logoUrl} alt="Logo preview"
-                            style={{ marginTop: 12, maxHeight: 72, maxWidth: 200, objectFit: 'contain', borderRadius: 8 }}
-                            onError={e => e.target.style.display = 'none'}
-                        />
-                    )}
                 </div>
 
                 <button type="submit" className="btn btn-primary" disabled={saving} style={{ minWidth: 160 }}>

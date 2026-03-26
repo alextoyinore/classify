@@ -251,6 +251,13 @@ router.post('/:id/auto-enroll', requireRole('ADMIN'), async (req, res, next) => 
 
         if (!course) return res.status(404).json({ error: 'Course not found' });
 
+        if (!course.levels || course.levels.length === 0) {
+            return res.status(400).json({ error: 'Course has no assigned levels. Please assign levels before auto-enrolling.' });
+        }
+        if (!course.departments || course.departments.length === 0) {
+            return res.status(400).json({ error: 'Course has no assigned departments. Please assign departments before auto-enrolling.' });
+        }
+
         const students = await prisma.student.findMany({
             where: {
                 isActive: true,
@@ -261,7 +268,7 @@ router.post('/:id/auto-enroll', requireRole('ADMIN'), async (req, res, next) => 
         });
 
         if (students.length === 0) {
-            return res.json({ enrolled: 0, message: 'No matching students found' });
+            return res.status(404).json({ error: 'No active students found matching the assigned departments and levels.' });
         }
 
         const data = students.map(s => ({
@@ -272,6 +279,11 @@ router.post('/:id/auto-enroll', requireRole('ADMIN'), async (req, res, next) => 
         }));
 
         const result = await prisma.enrollment.createMany({ data, skipDuplicates: true });
+
+        if (result.count === 0) {
+            return res.status(400).json({ error: 'All matching students are already enrolled natively in this session and semester.' });
+        }
+        
         res.json({ enrolled: result.count });
     } catch (err) { next(err); }
 });

@@ -7,5 +7,7 @@
   "logoUrl": "",
   "currentSession": "2025/2026",
   "currentSemester": "SECOND",
-  "updatedAt": "2026-02-25T16:34:57.277Z"
+  "updatedAt": "2026-03-24T21:11:48.102Z",
+  "attendanceWeight": 10,
+  "examDeletionGraceDays": 3
 }

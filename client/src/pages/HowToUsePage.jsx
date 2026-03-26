@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useAuth } from '../context/AuthContext';
 import { BookOpen, Users, GraduationCap, ChevronDown, ChevronRight } from 'lucide-react';
 
 const sections = [
@@ -80,7 +81,16 @@ const sections = [
 ];
 
 export default function HowToUsePage() {
-    const [openSection, setOpenSection] = useState('student');
+    const { user, isAdmin } = useAuth();
+
+    // Filter sections: Admin sees all, others see only their role
+    const visibleSections = isAdmin 
+        ? sections 
+        : sections.filter(sec => sec.id === user?.role?.toLowerCase());
+
+    const [openSection, setOpenSection] = useState(() => {
+        return isAdmin ? 'admin' : user?.role?.toLowerCase() || 'student';
+    });
 
     return (
         <div className="how-to-use-page">
@@ -92,7 +102,7 @@ export default function HowToUsePage() {
             </div>
 
             <div className="mt-24 flex flex-col gap-16">
-                {sections.map((sec) => (
+                {visibleSections.map((sec) => (
                     <div key={sec.id} className="card" style={{ padding: 0, overflow: 'hidden' }}>
                         <button
                             className="w-full flex items-center justify-between"

@@ -23,6 +23,11 @@ export default function CourseDetail() {
     const [editSemesters, setEditSemesters] = useState([]);
     const [savingAssignments, setSavingAssignments] = useState(false);
 
+    const [assignInstructorModal, setAssignInstructorModal] = useState(false);
+    const [availableInstructors, setAvailableInstructors] = useState([]);
+    const [selectedInstructorId, setSelectedInstructorId] = useState('');
+    const [assigningInstructor, setAssigningInstructor] = useState(false);
+
     const [topics, setTopics] = useState([]);
     const [topicForm, setTopicForm] = useState({ title: '', description: '' });
     const [savingTopic, setSavingTopic] = useState(false);
@@ -71,6 +76,35 @@ export default function CourseDetail() {
             setResources(data.data || []);
         } catch { }
         setLoadingResources(false);
+    };
+
+    const loadInstructorsForAssignment = async () => {
+        try {
+            const { data } = await api.get('/instructors?limit=1000');
+            setAvailableInstructors(data.data || []);
+        } catch {}
+    };
+
+    useEffect(() => {
+        if (assignInstructorModal && availableInstructors.length === 0) {
+            loadInstructorsForAssignment();
+        }
+    }, [assignInstructorModal]);
+
+    const handleAssignInstructor = async (e) => {
+        e.preventDefault();
+        if (!selectedInstructorId) return;
+        setAssigningInstructor(true);
+        try {
+            await api.post('/instructors/assign', { instructorId: selectedInstructorId, courseId: id, isPrimary: course.instructors.length === 0 });
+            toast('Instructor assigned successfully');
+            setAssignInstructorModal(false);
+            const { data } = await api.get(`/courses/${id}`);
+            setCourse(data);
+        } catch (err) {
+            toast(err.response?.data?.error || 'Failed to assign instructor', 'error');
+        }
+        setAssigningInstructor(false);
     };
 
     const handleEnroll = async (e) => {
@@ -249,6 +283,14 @@ export default function CourseDetail() {
 
             {tab === 'overview' && (
                 <div className="card">
+                    <div className="flex items-center justify-between" style={{ marginBottom: 20 }}>
+                        <h3 style={{ fontWeight: 700 }}>Instructors</h3>
+                        {isAdmin && (
+                            <button className="btn btn-primary btn-sm" onClick={() => setAssignInstructorModal(true)}>
+                                <Plus size={14} /> Assign Instructor
+                            </button>
+                        )}
+                    </div>
                     {course.instructors?.length > 0 ? (
                         <div>
                             {course.instructors.map(ci => (
@@ -372,66 +414,68 @@ export default function CourseDetail() {
                         <h3 style={{ fontWeight: 700 }}>Course Curriculum</h3>
                     </div>
 
-                    <div className="flex flex-col gap-12" style={{ marginBottom: 32 }}>
-                        {topics.length === 0 ? (
-                            <div className="empty" style={{ padding: 32 }}>
-                                <BookOpen size={48} />
-                                <p>No curriculum topics defined yet</p>
-                            </div>
-                        ) : (
-                            topics.map((topic, index) => (
-                                <div key={topic.id} className="flex gap-16 items-start" style={{ padding: 16, border: '1px solid var(--border)', borderRadius: 'var(--radius)' }}>
-                                    <div style={{ background: 'var(--bg-secondary)', width: 32, height: 32, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 600, color: 'var(--text-secondary)' }}>
-                                        {index + 1}
+                    <div style={{ display: 'flex', flexDirection: 'row', gap: 32, flexWrap: 'wrap' }}>
+                        {isAdmin && (
+                            <div style={{ flex: '1 1 300px', minWidth: 280 }}>
+                                <h4 style={{ fontWeight: 600, marginBottom: 16 }}>
+                                    {editingTopicId ? 'Edit Topic' : 'Add New Topic'}
+                                </h4>
+                                <form onSubmit={handleSaveTopic} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                                    <div className="form-group">
+                                        <label>Title <span style={{ color: 'red' }}>*</span></label>
+                                        <input value={topicForm.title} onChange={e => setTopicForm({ ...topicForm, title: e.target.value })} placeholder="e.g. Introduction to React" required />
                                     </div>
-                                    <div style={{ flex: 1 }}>
-                                        <div className="flex items-center justify-between">
-                                            <h4 style={{ fontWeight: 600, fontSize: '1rem', color: 'var(--text-primary)' }}>{topic.title}</h4>
-                                            {isAdmin && (
-                                                <div className="flex gap-8">
-                                                    <button type="button" className="btn-icon" style={{ color: 'var(--accent)' }} onClick={() => { setEditingTopicId(topic.id); setTopicForm({ title: topic.title, description: topic.description || '' }); }}>
-                                                        <Edit2 size={16} />
-                                                    </button>
-                                                    <button type="button" className="btn-icon" style={{ color: 'var(--danger)' }} onClick={() => handleDeleteTopic(topic.id)}>
-                                                        <Trash2 size={16} />
-                                                    </button>
-                                                </div>
-                                            )}
-                                        </div>
-                                        {topic.description && <p style={{ marginTop: 8, fontSize: '0.9rem', color: 'var(--text-secondary)', whiteSpace: 'pre-wrap' }}>{topic.description}</p>}
+                                    <div className="form-group">
+                                        <label>Description (Optional)</label>
+                                        <textarea value={topicForm.description} onChange={e => setTopicForm({ ...topicForm, description: e.target.value })} placeholder="What will be covered in this topic?" rows={3} />
                                     </div>
-                                </div>
-                            ))
-                        )}
-                    </div>
-
-                    {isAdmin && (
-                        <>
-                            <h4 style={{ fontWeight: 600, marginBottom: 16, borderTop: '1px solid var(--border)', paddingTop: 20 }}>
-                                {editingTopicId ? 'Edit Topic' : 'Add New Topic'}
-                            </h4>
-                            <form onSubmit={handleSaveTopic} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                                <div className="form-group">
-                                    <label>Title <span style={{ color: 'red' }}>*</span></label>
-                                    <input value={topicForm.title} onChange={e => setTopicForm({ ...topicForm, title: e.target.value })} placeholder="e.g. Introduction to React" required />
-                                </div>
-                                <div className="form-group">
-                                    <label>Description (Optional)</label>
-                                    <textarea value={topicForm.description} onChange={e => setTopicForm({ ...topicForm, description: e.target.value })} placeholder="What will be covered in this topic?" rows={3} />
-                                </div>
-                                <div className="flex gap-12">
-                                    <button type="submit" className="btn btn-primary" disabled={savingTopic || !topicForm.title.trim()}>
-                                        {savingTopic ? 'Saving...' : editingTopicId ? 'Update Topic' : 'Add Topic'}
-                                    </button>
-                                    {editingTopicId && (
-                                        <button type="button" className="btn btn-secondary" onClick={() => { setEditingTopicId(null); setTopicForm({ title: '', description: '' }); }}>
-                                            Cancel
+                                    <div className="flex gap-12">
+                                        <button type="submit" className="btn btn-primary" disabled={savingTopic || !topicForm.title.trim()}>
+                                            {savingTopic ? 'Saving...' : editingTopicId ? 'Update Topic' : 'Add Topic'}
                                         </button>
-                                    )}
+                                        {editingTopicId && (
+                                            <button type="button" className="btn btn-secondary" onClick={() => { setEditingTopicId(null); setTopicForm({ title: '', description: '' }); }}>
+                                                Cancel
+                                            </button>
+                                        )}
+                                    </div>
+                                </form>
+                            </div>
+                        )}
+
+                        <div style={{ flex: '2 1 400px', minWidth: 280 }} className="flex flex-col gap-12">
+                            {topics.length === 0 ? (
+                                <div className="empty" style={{ padding: 32 }}>
+                                    <BookOpen size={48} />
+                                    <p>No curriculum topics defined yet</p>
                                 </div>
-                            </form>
-                        </>
-                    )}
+                            ) : (
+                                topics.map((topic, index) => (
+                                    <div key={topic.id} className="flex gap-16 items-start" style={{ padding: 16, border: '1px solid var(--border)', borderRadius: 'var(--radius)' }}>
+                                        <div style={{ background: 'var(--bg-secondary)', width: 32, height: 32, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 600, color: 'var(--text-secondary)' }}>
+                                            {index + 1}
+                                        </div>
+                                        <div style={{ flex: 1 }}>
+                                            <div className="flex items-center justify-between">
+                                                <h4 style={{ fontWeight: 600, fontSize: '1rem', color: 'var(--text-primary)' }}>{topic.title}</h4>
+                                                {isAdmin && (
+                                                    <div className="flex gap-8">
+                                                        <button type="button" className="btn-icon" style={{ color: 'var(--accent)' }} onClick={() => { setEditingTopicId(topic.id); setTopicForm({ title: topic.title, description: topic.description || '' }); }}>
+                                                            <Edit2 size={16} />
+                                                        </button>
+                                                        <button type="button" className="btn-icon" style={{ color: 'var(--danger)' }} onClick={() => handleDeleteTopic(topic.id)}>
+                                                            <Trash2 size={16} />
+                                                        </button>
+                                                    </div>
+                                                )}
+                                            </div>
+                                            {topic.description && <p style={{ marginTop: 8, fontSize: '0.9rem', color: 'var(--text-secondary)', whiteSpace: 'pre-wrap' }}>{topic.description}</p>}
+                                        </div>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                    </div>
                 </div>
             )}
 
@@ -668,6 +712,36 @@ export default function CourseDetail() {
                                 </div>
                             )}
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {assignInstructorModal && (
+                <div className="modal-backdrop" onClick={() => setAssignInstructorModal(false)}>
+                    <div className="modal" onClick={e => e.stopPropagation()}>
+                        <div className="modal-header">
+                            <span className="modal-title">Assign Instructor</span>
+                            <button className="btn-icon" onClick={() => setAssignInstructorModal(false)}><X size={20} /></button>
+                        </div>
+                        <form onSubmit={handleAssignInstructor}>
+                            <div className="modal-body">
+                                <div className="form-group">
+                                    <label>Select Instructor *</label>
+                                    <select value={selectedInstructorId} onChange={e => setSelectedInstructorId(e.target.value)} required>
+                                        <option value="">-- Choose Instructor --</option>
+                                        {availableInstructors.map(inst => (
+                                            <option key={inst.id} value={inst.id}>{inst.firstName} {inst.lastName} ({inst.staffId || 'No Staff ID'})</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            </div>
+                            <div className="modal-footer">
+                                <button type="button" className="btn btn-secondary" onClick={() => setAssignInstructorModal(false)}>Cancel</button>
+                                <button type="submit" className="btn btn-primary" disabled={assigningInstructor || !selectedInstructorId}>
+                                    {assigningInstructor ? 'Assigning...' : 'Assign Instructor'}
+                                </button>
+                            </div>
+                        </form>
                     </div>
                 </div>
             )}

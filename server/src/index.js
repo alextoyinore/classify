@@ -53,7 +53,7 @@ app.use(cors({
 }));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
-app.use('/uploads', express.static('uploads'));
+app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
 
 // ─── Static Files (Production) ──────────────────────────────
 // In the bundled/production version, the client is moved to a 'public' folder next to the script

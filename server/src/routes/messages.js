@@ -23,9 +23,9 @@ router.get('/users', async (req, res, next) => {
                 where: { id: { not: currentUserId } },
                 select: {
                     id: true, role: true,
-                    student: { select: { firstName: true, lastName: true, matricNumber: true } },
+                    student: { select: { firstName: true, lastName: true, matricNumber: true, departmentId: true, level: true } },
                     admin: { select: { fullName: true } },
-                    instructor: { select: { firstName: true, lastName: true } }
+                    instructor: { select: { firstName: true, lastName: true, departmentId: true } }
                 }
             });
         } else if (role === 'STUDENT') {
@@ -34,9 +34,9 @@ router.get('/users', async (req, res, next) => {
                 where: { id: { not: currentUserId } },
                 select: {
                     id: true, role: true,
-                    student: { select: { firstName: true, lastName: true, matricNumber: true } },
+                    student: { select: { firstName: true, lastName: true, matricNumber: true, departmentId: true, level: true } },
                     admin: { select: { fullName: true } },
-                    instructor: { select: { firstName: true, lastName: true } }
+                    instructor: { select: { firstName: true, lastName: true, departmentId: true } }
                 }
             });
         }

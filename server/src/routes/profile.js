@@ -26,8 +26,15 @@ router.put('/', authenticate, async (req, res, next) => {
         const { role, id: userId } = req.user;
         const data = req.body;
 
+        if (data.email) {
+            const emailClean = data.email.toLowerCase().trim();
+            const existing = await prisma.user.findUnique({ where: { email: emailClean } });
+            if (existing && existing.id !== userId) return res.status(400).json({ error: 'Email already in use by another account' });
+            await prisma.user.update({ where: { id: userId }, data: { email: emailClean } });
+        }
+
         if (role === 'STUDENT') {
-            const { firstName, lastName, phone, address, gender, avatarUrl, departmentId, facultyId } = data;
+            const { firstName, lastName, phone, address, gender, avatarUrl, departmentId, facultyId, level } = data;
             const updated = await prisma.student.update({
                 where: { userId },
                 data: {
@@ -39,6 +46,7 @@ router.put('/', authenticate, async (req, res, next) => {
                     avatarUrl,
                     departmentId,
                     facultyId,
+                    ...(level ? { level: Number(level) } : {})
                 },
             });
             return res.json({ message: 'Profile updated', profile: updated });
