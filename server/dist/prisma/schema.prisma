@@ -433,6 +433,10 @@ model Message {
   isRead     Boolean  @default(false)
   createdAt  DateTime @default(now())
 
+  replyToId  String?
+  replyTo    Message?  @relation("MessageReplies", fields: [replyToId], references: [id])
+  replies    Message[] @relation("MessageReplies")
+
   @@index([senderId, receiverId])
 }
 
@@ -461,6 +465,7 @@ model AttendanceSession {
   level        Int?
   startTime    DateTime    @default(now())
   isActive     Boolean     @default(true)
+  expiresAt    DateTime?
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt
 
@@ -529,8 +534,7 @@ model TimetableEntry {
   instructor   Instructor? @relation(fields: [instructorId], references: [id])
   semesterId   String
   semester     Semester_   @relation(fields: [semesterId], references: [id], onDelete: Cascade)
-  departmentId String?
-  department   Department? @relation(fields: [departmentId], references: [id])
+  departments  Department[]
   dayOfWeek    DayOfWeek
   startTime    String      // HH:mm
   endTime      String      // HH:mm
@@ -541,6 +545,5 @@ model TimetableEntry {
 
   @@index([courseId])
   @@index([semesterId])
-  @@index([departmentId])
   @@index([instructorId])
 }

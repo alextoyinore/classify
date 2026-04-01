@@ -10,7 +10,7 @@ router.get('/', async (req, res, next) => {
     try {
         const { departmentId, semesterId, level } = req.query;
         const where = {
-            ...(departmentId && { departmentId }),
+            ...(departmentId && { departments: { some: { id: departmentId } } }),
             ...(semesterId && { semesterId }),
             ...(level && { level: Number(level) }),
         };
@@ -19,7 +19,7 @@ router.get('/', async (req, res, next) => {
             include: {
                 course: { select: { id: true, code: true, title: true } },
                 instructor: { select: { id: true, firstName: true, lastName: true } },
-                department: { select: { id: true, name: true } },
+                departments: { select: { id: true, name: true } },
                 semester: { select: { id: true, name: true, sessionId: true } },
             },
             orderBy: [
@@ -34,7 +34,7 @@ router.get('/', async (req, res, next) => {
 // POST /api/timetable
 router.post('/', requireRole('ADMIN'), async (req, res, next) => {
     try {
-        const { courseId, instructorId, semesterId, departmentId, dayOfWeek, startTime, endTime, location, level } = req.body;
+        const { courseId, instructorId, semesterId, departmentIds, dayOfWeek, startTime, endTime, location, level } = req.body;
 
         // Basic validation
         if (!courseId || !semesterId || !dayOfWeek || !startTime || !endTime || !level) {
@@ -46,7 +46,9 @@ router.post('/', requireRole('ADMIN'), async (req, res, next) => {
                 courseId,
                 instructorId,
                 semesterId,
-                departmentId,
+                departments: {
+                    connect: (departmentIds || []).map(id => ({ id }))
+                },
                 dayOfWeek,
                 startTime,
                 endTime,
@@ -55,7 +57,8 @@ router.post('/', requireRole('ADMIN'), async (req, res, next) => {
             },
             include: {
                 course: true,
-                instructor: true
+                instructor: true,
+                departments: true
             }
         });
         res.status(201).json(entry);
@@ -65,7 +68,7 @@ router.post('/', requireRole('ADMIN'), async (req, res, next) => {
 // PATCH /api/timetable/:id
 router.patch('/:id', requireRole('ADMIN'), async (req, res, next) => {
     try {
-        const { courseId, instructorId, semesterId, departmentId, dayOfWeek, startTime, endTime, location, level } = req.body;
+        const { courseId, instructorId, semesterId, departmentIds, dayOfWeek, startTime, endTime, location, level } = req.body;
 
         const entry = await prisma.timetableEntry.update({
             where: { id: req.params.id },
@@ -73,12 +76,19 @@ router.patch('/:id', requireRole('ADMIN'), async (req, res, next) => {
                 ...(courseId && { courseId }),
                 ...(instructorId !== undefined && { instructorId }),
                 ...(semesterId && { semesterId }),
-                ...(departmentId !== undefined && { departmentId }),
+                ...(departmentIds !== undefined && { 
+                    departments: {
+                        set: departmentIds.map(id => ({ id }))
+                    }
+                }),
                 ...(dayOfWeek && { dayOfWeek }),
                 ...(startTime && { startTime }),
                 ...(endTime && { endTime }),
                 ...(location !== undefined && { location }),
                 ...(level && { level: Number(level) })
+            },
+            include: {
+                departments: true
             }
         });
         res.json(entry);

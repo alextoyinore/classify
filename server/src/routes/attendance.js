@@ -26,14 +26,14 @@ router.post('/session', requireRole('ADMIN', 'INSTRUCTOR'), async (req, res, nex
                 semesterId,
                 departmentId: departmentId || null,
                 level: level ? parseInt(level) : null,
-                isActive: true
+                isActive: true,
+                expiresAt: new Date(Date.now() + 90 * 60 * 1000) // 90 minutes from now
             }
         });
         res.status(201).json(session);
     } catch (err) { next(err); }
 });
 
-// PUT /api/attendance/session/:id/end — End a class session
 router.put('/session/:id/end', requireRole('ADMIN', 'INSTRUCTOR'), async (req, res, next) => {
     try {
         const session = await prisma.attendanceSession.update({
@@ -41,6 +41,25 @@ router.put('/session/:id/end', requireRole('ADMIN', 'INSTRUCTOR'), async (req, r
             data: { isActive: false }
         });
         res.json(session);
+    } catch (err) { next(err); }
+});
+
+// PUT /api/attendance/session/:id/extend — Extend a class session
+router.put('/session/:id/extend', requireRole('ADMIN', 'INSTRUCTOR'), async (req, res, next) => {
+    try {
+        const { id } = req.params;
+        const { minutes = 30 } = req.body;
+        const session = await prisma.attendanceSession.findUnique({ where: { id } });
+        if (!session) return res.status(404).json({ error: 'Session not found' });
+
+        const currentExpiry = session.expiresAt ? new Date(session.expiresAt).getTime() : Date.now();
+        const newExpiry = new Date(currentExpiry + (minutes * 60 * 1000));
+
+        const updated = await prisma.attendanceSession.update({
+            where: { id },
+            data: { expiresAt: newExpiry, isActive: true }
+        });
+        res.json(updated);
     } catch (err) { next(err); }
 });
 
@@ -63,7 +82,13 @@ router.get('/active-sessions', async (req, res, next) => {
     try {
         if (req.user.role !== 'STUDENT') {
             const sessions = await prisma.attendanceSession.findMany({
-                where: { isActive: true },
+                where: { 
+                    isActive: true,
+                    OR: [
+                        { expiresAt: null },
+                        { expiresAt: { gt: new Date() } }
+                    ]
+                },
                 include: {
                     course: { select: { code: true, title: true } },
                     department: { select: { name: true } }
@@ -84,6 +109,10 @@ router.get('/active-sessions', async (req, res, next) => {
                 AND: [
                     { OR: [{ departmentId: student.departmentId }, { departmentId: null }] },
                     { OR: [{ level: student.level }, { level: null }] }
+                ],
+                OR: [
+                    { expiresAt: null },
+                    { expiresAt: { gt: new Date() } }
                 ]
             },
             include: {

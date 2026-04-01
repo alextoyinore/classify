@@ -34,22 +34,42 @@ router.put('/', authenticate, async (req, res, next) => {
         }
 
         if (role === 'STUDENT') {
-            const { firstName, lastName, phone, address, gender, avatarUrl, departmentId, facultyId, level } = data;
-            const updated = await prisma.student.update({
-                where: { userId },
-                data: {
-                    firstName,
-                    lastName,
-                    phone,
-                    address,
-                    gender,
-                    avatarUrl,
-                    departmentId,
-                    facultyId,
-                    ...(level ? { level: Number(level) } : {})
-                },
-            });
-            return res.json({ message: 'Profile updated', profile: updated });
+            const { firstName, lastName, phone, address, gender, avatarUrl, departmentId, facultyId, level, matricNumber } = data;
+            
+            let updateMatricNumber;
+            if (matricNumber) {
+                const currentStudent = await prisma.student.findUnique({ where: { userId } });
+                if (currentStudent && currentStudent.matricNumber.startsWith('PENDING-')) {
+                    const newMatric = matricNumber.toUpperCase().trim();
+                    if (!newMatric.startsWith('PENDING-')) {
+                        updateMatricNumber = newMatric;
+                    }
+                } else if (currentStudent && currentStudent.matricNumber !== matricNumber.toUpperCase().trim()) {
+                    return res.status(403).json({ error: 'You cannot change an already assigned matric number' });
+                }
+            }
+
+            try {
+                const updated = await prisma.student.update({
+                    where: { userId },
+                    data: {
+                        firstName,
+                        lastName,
+                        phone,
+                        address,
+                        gender,
+                        avatarUrl,
+                        departmentId,
+                        facultyId,
+                        ...(level ? { level: Number(level) } : {}),
+                        ...(updateMatricNumber ? { matricNumber: updateMatricNumber } : {})
+                    },
+                });
+                return res.json({ message: 'Profile updated', profile: updated });
+            } catch (err) {
+                if (err.code === 'P2002') return res.status(409).json({ error: 'Matric number is already registered to another student' });
+                throw err;
+            }
         }
 
         if (role === 'INSTRUCTOR') {

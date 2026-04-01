@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Plus, X, Edit2, Trash2, BookOpen, Check, Upload, Save, Filter } from 'lucide-react';
 import api from '../api';
 import { useToast } from '../context/ToastContext';
+import Pagination from '../components/Pagination';
 
 const emptyQ = { courseId: '', questionText: '', optionA: '', optionB: '', optionC: '', optionD: '', correctOption: 'A', explanation: '', marks: 1, difficulty: 'MEDIUM', topicId: '' };
 
@@ -225,15 +226,11 @@ export default function CbtAdminPage() {
                 )}
 
             {/* Pagination Placeholder */}
-            {totalQuestions > qLimit && (
-                <div className="flex justify-center mt-32 gap-8">
-                    {[...Array(Math.ceil(totalQuestions / qLimit))].map((_, i) => (
-                        <button key={i} className={`btn btn-sm ${qPage === i + 1 ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setQPage(i + 1)}>
-                            {i + 1}
-                        </button>
-                    ))}
-                </div>
-            )}
+            <Pagination 
+                currentPage={qPage} 
+                totalPages={Math.ceil(totalQuestions / qLimit)} 
+                onPageChange={(p) => setQPage(p)} 
+            />
 
             {/* Question Entry Modal */}
             {qModal && (

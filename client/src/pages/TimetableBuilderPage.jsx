@@ -29,7 +29,7 @@ export default function TimetableBuilderPage() {
         courseId: '',
         instructorId: '',
         semesterId: '',
-        departmentId: '',
+        departmentIds: [],
         dayOfWeek: 'MONDAY',
         startTime: '08:00',
         endTime: '10:00',
@@ -90,9 +90,9 @@ export default function TimetableBuilderPage() {
         try {
             const payload = {
                 ...form,
-                departmentId: filters.departmentId || null,
+                departmentIds: form.departmentIds,
                 semesterId: filters.semesterId,
-                level: Number(filters.level)
+                level: Number(form.level)
             };
 
             if (editingEntry) {
@@ -126,12 +126,12 @@ export default function TimetableBuilderPage() {
             courseId: '',
             instructorId: '',
             semesterId: filters.semesterId,
-            departmentId: filters.departmentId || '',
+            departmentIds: filters.departmentId ? [filters.departmentId] : [],
             dayOfWeek: day,
             startTime: time,
             endTime: '10:00',
             location: '',
-            level: filters.level
+            level: filters.level || 100
         });
         setShowModal(true);
     };
@@ -142,7 +142,7 @@ export default function TimetableBuilderPage() {
             courseId: entry.courseId,
             instructorId: entry.instructorId || '',
             semesterId: entry.semesterId,
-            departmentId: entry.departmentId || '',
+            departmentIds: entry.departments?.map(d => d.id) || [],
             dayOfWeek: entry.dayOfWeek,
             startTime: entry.startTime,
             endTime: entry.endTime,
@@ -230,6 +230,9 @@ export default function TimetableBuilderPage() {
                                                         <Clock size={12} /> {entry.startTime} - {entry.endTime}
                                                     </div>
                                                     <div className="entry-title">{entry.course?.code}: {entry.course?.title}</div>
+                                                    <div className="entry-depts">
+                                                        {entry.departments?.map(d => d.name).join(', ')}
+                                                    </div>
                                                     <div className="entry-footer">
                                                         <span><User size={12} /> {entry.instructor ? `${entry.instructor.firstName} ${entry.instructor.lastName}` : 'TBA'}</span>
                                                         <span><MapPin size={12} /> {entry.location || 'TBA'}</span>
@@ -268,6 +271,36 @@ export default function TimetableBuilderPage() {
                                     <select value={form.instructorId} onChange={e => setForm({ ...form, instructorId: e.target.value })}>
                                         <option value="">Select Instructor</option>
                                         {instructors.map(i => <option key={i.id} value={i.id}>{i.firstName} {i.lastName}</option>)}
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-2 gap-24 mb-16">
+                                <div className="form-group">
+                                    <label>Departments *</label>
+                                    <div className="dept-checkboxes card p-12">
+                                        {departments.map(d => (
+                                            <label key={d.id} className="dept-checkbox-item">
+                                                <input 
+                                                    type="checkbox" 
+                                                    checked={form.departmentIds.includes(d.id)}
+                                                    onChange={e => {
+                                                        const newIds = e.target.checked
+                                                            ? [...form.departmentIds, d.id]
+                                                            : form.departmentIds.filter(id => id !== d.id);
+                                                        setForm({ ...form, departmentIds: newIds });
+                                                    }}
+                                                />
+                                                <span>{d.name}</span>
+                                            </label>
+                                        ))}
+                                    </div>
+                                    {form.departmentIds.length === 0 && <span className="helper-text error">Select at least one department</span>}
+                                </div>
+                                <div className="form-group">
+                                    <label>Level *</label>
+                                    <select required value={form.level} onChange={e => setForm({ ...form, level: Number(e.target.value) })}>
+                                        {LEVELS.map(l => <option key={l} value={l}>{l} Level</option>)}
                                     </select>
                                 </div>
                             </div>
@@ -427,6 +460,39 @@ export default function TimetableBuilderPage() {
                 }
                 .input-with-icon input {
                     padding-left: 36px !important;
+                }
+
+                .dept-checkboxes {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 8px;
+                    max-height: 150px;
+                    overflow-y: auto;
+                    background: var(--bg-secondary) !important;
+                }
+                .dept-checkbox-item {
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                    cursor: pointer;
+                    font-size: 0.85rem;
+                }
+                .dept-checkbox-item input {
+                    width: 16px;
+                    height: 16px;
+                }
+                .helper-text.error {
+                    color: var(--danger);
+                    font-size: 0.75rem;
+                    margin-top: 4px;
+                }
+                .entry-depts {
+                    font-size: 0.7rem;
+                    color: var(--accent);
+                    font-weight: 700;
+                    text-transform: uppercase;
+                    margin-bottom: 4px;
+                    opacity: 0.8;
                 }
 
                 /* Modal Styles */

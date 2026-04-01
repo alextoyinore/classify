@@ -101,6 +101,15 @@ router.get('/:userId', async (req, res, next) => {
                     { senderId: userId, receiverId: currentUserId }
                 ]
             },
+            include: {
+                replyTo: {
+                    select: {
+                        id: true,
+                        content: true,
+                        senderId: true
+                    }
+                }
+            },
             orderBy: { createdAt: 'asc' },
             take: 100 // Limit history for performance, could add pagination later
         });
@@ -112,7 +121,7 @@ router.get('/:userId', async (req, res, next) => {
 // ─── POST /api/messages ───────────────────────────────────────────────────────
 router.post('/', async (req, res, next) => {
     try {
-        const { receiverId, content } = req.body;
+        const { receiverId, content, replyToId } = req.body;
         const currentUserId = req.user.id;
         const role = req.user.role;
 
@@ -164,11 +173,81 @@ router.post('/', async (req, res, next) => {
             data: {
                 senderId: currentUserId,
                 receiverId,
-                content
+                content,
+                replyToId: replyToId || null
+            },
+            include: {
+                replyTo: {
+                    select: {
+                        id: true,
+                        content: true,
+                        senderId: true
+                    }
+                }
             }
         });
 
         res.status(201).json({ message });
+    } catch (err) { next(err); }
+});
+
+// ─── POST /api/messages/broadcast ─────────────────────────────────────────────
+router.post('/broadcast', async (req, res, next) => {
+    try {
+        const { target, courseId, content } = req.body;
+        const currentUserId = req.user.id;
+        const role = req.user.role;
+
+        if (role === 'STUDENT') return res.status(403).json({ error: 'Not authorized' });
+        if (!content) return res.status(400).json({ error: 'Content is required' });
+
+        let students = [];
+
+        if (target === 'ALL_STUDENTS' && role === 'ADMIN') {
+            students = await prisma.student.findMany({ select: { id: true, userId: true } });
+        } else if (target === 'COURSE_STUDENTS') {
+            if (!courseId) return res.status(400).json({ error: 'courseId is required' });
+
+            // If Instructor, verify they are assigned to this course
+            if (role === 'INSTRUCTOR') {
+                const instructorNode = await prisma.instructor.findUnique({ where: { userId: currentUserId } });
+                const isAssigned = await prisma.courseInstructor.findUnique({
+                    where: { courseId_instructorId: { courseId, instructorId: instructorNode.id } }
+                });
+                if (!isAssigned) return res.status(403).json({ error: 'Not assigned to this course' });
+            }
+
+            const enrollments = await prisma.enrollment.findMany({
+                where: { courseId },
+                include: { student: { select: { id: true, userId: true } } }
+            });
+            students = enrollments.map(e => e.student);
+        } else {
+            return res.status(400).json({ error: 'Invalid target' });
+        }
+
+        // Filter out students in active exam periods
+        const studentsToMessage = [];
+        for (const s of students) {
+            const inExam = await isStudentInExamPeriod(s.id);
+            if (!inExam) studentsToMessage.push(s);
+        }
+
+        if (studentsToMessage.length === 0) {
+            return res.status(400).json({ error: 'No reachable students found (possibly in exam periods or enrollment is empty)' });
+        }
+
+        // Mass create messages
+        const data = studentsToMessage.map(s => ({
+            senderId: currentUserId,
+            receiverId: s.userId,
+            content,
+            isRead: false
+        }));
+
+        const result = await prisma.message.createMany({ data });
+
+        res.status(201).json({ count: result.count, message: `Broadcast sent to ${result.count} students.` });
     } catch (err) { next(err); }
 });
 

@@ -1,0 +1,194 @@
+{
+  "version": "1.2",
+  "timestamp": "2026-04-01T13:45:14.145Z",
+  "data": {
+    "users": [
+      {
+        "id": "cmm6s80740000owx25393ahzd",
+        "email": "instructor@classify.com",
+        "role": "INSTRUCTOR",
+        "isActive": true,
+        "createdAt": "2026-02-28T20:37:01.312Z"
+      },
+      {
+        "id": "cmm6qnnpp0009mzt2m4vv5rsy",
+        "email": "student@classify.com",
+        "role": "STUDENT",
+        "isActive": true,
+        "createdAt": "2026-02-28T19:53:12.397Z"
+      },
+      {
+        "id": "cmnbehg7x00006vf994apfoox",
+        "email": "jane@classify.com",
+        "role": "STUDENT",
+        "isActive": true,
+        "createdAt": "2026-03-29T06:51:00.571Z"
+      },
+      {
+        "id": "cmm6qnnma0000mzt2qj827wxt",
+        "email": "admin@classify.com",
+        "role": "ADMIN",
+        "isActive": true,
+        "createdAt": "2026-02-28T19:53:12.275Z"
+      }
+    ],
+    "admins": [
+      {
+        "id": "cmm6qnnma0001mzt2pj3p9lb1",
+        "userId": "cmm6qnnma0000mzt2qj827wxt",
+        "fullName": "System Administrator",
+        "phone": null,
+        "avatarUrl": null,
+        "createdAt": "2026-02-28T19:53:12.275Z",
+        "updatedAt": "2026-02-28T19:53:12.275Z"
+      }
+    ],
+    "instructors": [
+      {
+        "id": "cmm6s80740002owx2bepui96r",
+        "userId": "cmm6s80740000owx25393ahzd",
+        "staffId": null,
+        "firstName": "Alex",
+        "lastName": "Smith",
+        "phone": null,
+        "departmentId": null,
+        "facultyId": null,
+        "avatarUrl": null,
+        "qualification": null,
+        "isActive": true,
+        "createdAt": "2026-02-28T20:37:01.312Z",
+        "updatedAt": "2026-02-28T20:37:01.312Z"
+      }
+    ],
+    "students": [
+      {
+        "id": "cmm6qnnpp000bmzt2mlrzazcy",
+        "userId": "cmm6qnnpp0009mzt2m4vv5rsy",
+        "matricNumber": "STUDENT001",
+        "firstName": "John",
+        "lastName": "Doe",
+        "middleName": null,
+        "gender": "MALE",
+        "dateOfBirth": null,
+        "phone": null,
+        "address": null,
+        "avatarUrl": null,
+        "departmentId": "cmm6qnnmp0007mzt27pdsa214",
+        "facultyId": null,
+        "level": 100,
+        "entryYear": "2024",
+        "isActive": true,
+        "createdAt": "2026-02-28T19:53:12.397Z",
+        "updatedAt": "2026-02-28T19:53:12.397Z"
+      },
+      {
+        "id": "cmnbehg8100016vf950xq0wip",
+        "userId": "cmnbehg7x00006vf994apfoox",
+        "matricNumber": "JANE@CLASSIFY.COM",
+        "firstName": "Jane",
+        "lastName": "Doe",
+        "middleName": null,
+        "gender": "OTHER",
+        "dateOfBirth": null,
+        "phone": null,
+        "address": null,
+        "avatarUrl": null,
+        "departmentId": null,
+        "facultyId": null,
+        "level": 100,
+        "entryYear": "2026",
+        "isActive": true,
+        "createdAt": "2026-03-29T06:51:00.571Z",
+        "updatedAt": "2026-03-29T06:51:00.571Z"
+      }
+    ],
+    "faculties": [
+      {
+        "id": "cmm6qnnmn0005mzt203l9a0t6",
+        "name": "Science",
+        "description": null,
+        "createdAt": "2026-02-28T19:53:12.287Z",
+        "updatedAt": "2026-02-28T19:53:12.287Z"
+      }
+    ],
+    "departments": [
+      {
+        "id": "cmm6qnnmp0007mzt27pdsa214",
+        "name": "Computer Science",
+        "facultyId": "cmm6qnnmn0005mzt203l9a0t6",
+        "createdAt": "2026-02-28T19:53:12.290Z",
+        "updatedAt": "2026-02-28T19:53:12.290Z"
+      }
+    ],
+    "sessions": [
+      {
+        "id": "cmm6qnnmh0002mzt2ioj6bx72",
+        "title": "2024/2025",
+        "isCurrent": true,
+        "startDate": null,
+        "endDate": null,
+        "createdAt": "2026-02-28T19:53:12.281Z"
+      }
+    ],
+    "semesters": [
+      {
+        "id": "cmm6qnnmh0003mzt2t0pna7k2",
+        "sessionId": "cmm6qnnmh0002mzt2ioj6bx72",
+        "name": "FIRST",
+        "isCurrent": false,
+        "startDate": null,
+        "endDate": null,
+        "createdAt": "2026-02-28T19:53:12.281Z"
+      },
+      {
+        "id": "cmm6qnnmh0004mzt2wm7vrefs",
+        "sessionId": "cmm6qnnmh0002mzt2ioj6bx72",
+        "name": "SECOND",
+        "isCurrent": true,
+        "startDate": null,
+        "endDate": null,
+        "createdAt": "2026-02-28T19:53:12.281Z"
+      }
+    ],
+    "courses": [
+      {
+        "id": "cmm6qnnms0008mzt2pg7gsjbd",
+        "code": "CSC101",
+        "title": "Introduction to Computer Science",
+        "description": "",
+        "creditUnits": 1,
+        "levels": [
+          100
+        ],
+        "semesters": [
+          "SECOND",
+          "FIRST"
+        ],
+        "isActive": true,
+        "createdAt": "2026-02-28T19:53:12.292Z",
+        "updatedAt": "2026-03-24T21:13:20.619Z"
+      }
+    ],
+    "topics": [],
+    "courseInstructors": [],
+    "enrollments": [
+      {
+        "id": "cmm6qnnpx000dmzt2l11t1ppm",
+        "studentId": "cmm6qnnpp000bmzt2mlrzazcy",
+        "courseId": "cmm6qnnms0008mzt2pg7gsjbd",
+        "session": "2024/2025",
+        "semester": "FIRST",
+        "enrolledAt": "2026-02-28T19:53:12.405Z"
+      }
+    ],
+    "exams": [],
+    "scores": [],
+    "cbtExams": [],
+    "questions": [],
+    "examQuestions": [],
+    "attempts": [],
+    "answers": [],
+    "resources": [],
+    "attendance": []
+  }
+}

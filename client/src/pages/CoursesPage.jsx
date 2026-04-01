@@ -4,6 +4,7 @@ import { Plus, Search, Edit2, Trash2, X, BookOpen } from 'lucide-react';
 import api from '../api';
 import { useToast } from '../context/ToastContext';
 import { useAuth } from '../context/AuthContext';
+import Pagination from '../components/Pagination';
 
 const empty = { code: '', title: '', description: '', creditUnits: '' };
 
@@ -124,13 +125,11 @@ export default function CoursesPage() {
                                 </tbody>
                             </table>
                         </div>
-                        {pages > 1 && (
-                            <div className="pagination">
-                                {Array.from({ length: pages }, (_, i) => i + 1).map(p => (
-                                    <button key={p} className={`page-btn ${p === page ? 'active' : ''}`} onClick={() => setPage(p)}>{p}</button>
-                                ))}
-                            </div>
-                        )}
+                        <Pagination 
+                            currentPage={page} 
+                            totalPages={pages} 
+                            onPageChange={(p) => setPage(p)} 
+                        />
                     </>
                 )}
 

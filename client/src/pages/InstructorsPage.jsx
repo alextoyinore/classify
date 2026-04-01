@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Plus, Search, Edit2, Trash2, X } from 'lucide-react';
 import api from '../api';
 import { useToast } from '../context/ToastContext';
+import Pagination from '../components/Pagination';
 
 
 const empty = { firstName: '', lastName: '', email: '', password: '', staffId: '', phone: '', departmentId: '', facultyId: '', facultyName: '', qualification: '' };
@@ -113,13 +114,11 @@ export default function InstructorsPage() {
                                 </tbody>
                             </table>
                         </div>
-                        {pages > 1 && (
-                            <div className="pagination">
-                                {Array.from({ length: pages }, (_, i) => i + 1).map(p => (
-                                    <button key={p} className={`page-btn ${p === page ? 'active' : ''}`} onClick={() => setPage(p)}>{p}</button>
-                                ))}
-                            </div>
-                        )}
+                        <Pagination 
+                            currentPage={page} 
+                            totalPages={pages} 
+                            onPageChange={(p) => setPage(p)} 
+                        />
                     </>
                 )}
 

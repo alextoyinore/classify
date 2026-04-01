@@ -15,8 +15,7 @@ export default function LoginPage() {
     const [form, setForm] = useState({
         identifier: '', // Dual-purpose for Email or Matric
         password: '',
-        fullName: '',
-        matricNumber: ''
+        fullName: ''
     });
     const [showPw, setShowPw] = useState(false);
     const [loading, setLoading] = useState(false);
@@ -32,11 +31,11 @@ export default function LoginPage() {
                 await api.post('/auth/register', {
                     password: form.password,
                     fullName: form.fullName,
-                    matricNumber: form.matricNumber
+                    identifier: form.identifier
                 });
                 toast('Registration successful! Please sign in.');
                 setIsSignup(false);
-                setForm(f => ({ ...f, password: '', fullName: '', matricNumber: '', identifier: f.matricNumber }));
+                setForm(f => ({ ...f, password: '', fullName: '' }));
             } else {
                 await login(form.identifier, form.password);
                 toast('Welcome back!');
@@ -76,11 +75,11 @@ export default function LoginPage() {
                                 />
                             </div>
                             <div className="form-group">
-                                <label>Matric Number</label>
+                                <label>Email or Matric Number</label>
                                 <input
-                                    placeholder="CSC/21/001"
-                                    value={form.matricNumber}
-                                    onChange={e => setForm(f => ({ ...f, matricNumber: e.target.value }))}
+                                    placeholder="name@uni.edu or CSC/21/001"
+                                    value={form.identifier}
+                                    onChange={e => setForm(f => ({ ...f, identifier: e.target.value }))}
                                     required
                                 />
                             </div>

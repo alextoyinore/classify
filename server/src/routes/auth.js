@@ -86,14 +86,29 @@ router.post('/change-password', authenticate, async (req, res, next) => {
 // POST /api/auth/register (Student Self-Registration)
 router.post('/register', async (req, res, next) => {
     try {
-        const { password, fullName, matricNumber, departmentId } = req.body;
-        if (!password || !fullName || !matricNumber)
+        const { password, fullName, identifier, matricNumber, departmentId } = req.body;
+        
+        // Support both old matricNumber, and new identifier payload
+        const reqIdentifier = identifier || matricNumber;
+
+        if (!password || !fullName || !reqIdentifier)
             return res.status(400).json({ error: 'All fields are required' });
 
         if (password.length < 6)
             return res.status(400).json({ error: 'Password must be at least 6 characters' });
 
-        const mNumber = matricNumber.toUpperCase().trim();
+        const trimmedIdentifier = reqIdentifier.trim();
+        const isEmail = trimmedIdentifier.includes('@');
+        
+        let userEmail, userMatric;
+        
+        if (isEmail) {
+            userEmail = trimmedIdentifier.toLowerCase();
+            userMatric = 'PENDING-' + Date.now().toString(36).toUpperCase() + Math.random().toString(36).substring(2, 6).toUpperCase();
+        } else {
+            userMatric = trimmedIdentifier.toUpperCase();
+            userEmail = `${userMatric.replace(/\//g, '_')}@university.local`.toLowerCase();
+        }
 
         // Split fullName into firstName and lastName
         const nameParts = fullName.trim().split(/\s+/);
@@ -103,15 +118,14 @@ router.post('/register', async (req, res, next) => {
         const hashed = await bcrypt.hash(password, 12);
         const user = await prisma.user.create({
             data: {
-                // Use matric number as temporary email unique key
-                email: `${mNumber.replace(/\//g, '_')}@university.local`,
+                email: userEmail,
                 password: hashed,
                 role: 'STUDENT',
                 student: {
                     create: {
                         firstName,
                         lastName,
-                        matricNumber: mNumber,
+                        matricNumber: userMatric,
                         departmentId,
                         gender: 'OTHER',
                         level: 100,

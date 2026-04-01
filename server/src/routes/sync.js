@@ -3,6 +3,8 @@ import { join, basename } from 'path';
 import fs from 'fs';
 import { prisma } from '../lib/prisma.js';
 import { authenticate, requireRole } from '../middleware/auth.js';
+import { BACKUPS_DIR } from '../lib/paths.js';
+
 
 const router = Router();
 router.use(authenticate, requireRole('ADMIN'));
@@ -41,8 +43,7 @@ router.get('/logs', async (req, res) => {
 // ─── GET /api/sync/local ───────────────────────────────────
 router.get('/local', async (req, res) => {
     try {
-        const dir = 'uploads/backups';
-        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+        const dir = BACKUPS_DIR;
 
         const files = fs.readdirSync(dir)
             .filter(f => f.endsWith('.json'))
@@ -64,14 +65,14 @@ router.get('/local', async (req, res) => {
 
 // ─── GET /api/sync/local/download/:filename ────────────────
 router.get('/local/download/:filename', (req, res) => {
-    const filePath = join(process.cwd(), 'uploads/backups', basename(req.params.filename));
+    const filePath = join(BACKUPS_DIR, basename(req.params.filename));
     if (!fs.existsSync(filePath)) return res.status(404).json({ error: 'Backup not found' });
     res.download(filePath);
 });
 
 // ─── DELETE /api/sync/local/:filename ──────────────────────
 router.delete('/local/:filename', (req, res) => {
-    const filePath = join(process.cwd(), 'uploads/backups', basename(req.params.filename));
+    const filePath = join(BACKUPS_DIR, basename(req.params.filename));
     if (!fs.existsSync(filePath)) return res.status(404).json({ error: 'Backup not found' });
     fs.unlinkSync(filePath);
     res.json({ message: 'Backup deleted' });
@@ -129,8 +130,7 @@ router.post('/backup', async (req, res) => {
 
             // 2. Perform Local Backup
             try {
-                const backupDir = 'uploads/backups';
-                if (!fs.existsSync(backupDir)) fs.mkdirSync(backupDir, { recursive: true });
+                const backupDir = BACKUPS_DIR;
 
                 const backupFilename = `db-backup-${new Date().toISOString().replace(/[:.]/g, '-')}.json`;
                 const backupPath = join(backupDir, backupFilename);

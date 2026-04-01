@@ -21,6 +21,7 @@ export default function ProfilePage() {
     // Active sessions for students
     const [activeSessions, setActiveSessions] = useState([]);
     const [marking, setMarking] = useState(false);
+    const [isPendingMatric, setIsPendingMatric] = useState(false);
 
     // Academic Structure
     const [facs, setFacs] = useState([]);
@@ -34,6 +35,10 @@ export default function ProfilePage() {
         try {
             const { data } = await api.get('/profile');
             setProfile(data);
+            
+            if (data.student?.matricNumber?.startsWith('PENDING-')) {
+                setIsPendingMatric(true);
+            }
 
             // Fetch academic structure
             const facRes = await api.get('/faculties');
@@ -75,6 +80,9 @@ export default function ProfilePage() {
             const payload = { ...roleData, email: profile.email };
             await api.put('/profile', payload);
             toast('Profile updated successfully');
+            if (isPendingMatric && roleData.matricNumber && !roleData.matricNumber.startsWith('PENDING-')) {
+                setIsPendingMatric(false);
+            }
         } catch (err) {
             toast(err.response?.data?.error || 'Update failed', 'error');
         } finally {
@@ -203,24 +211,52 @@ export default function ProfilePage() {
                                 />
                             </div>
                         ) : (
-                            <div className="form-row mb-16">
-                                <div className="form-group">
-                                    <label>First Name</label>
-                                    <input
-                                        value={roleProfile.firstName || ''}
-                                        onChange={e => setField('firstName', e.target.value)}
-                                        required
-                                    />
+                            <>
+                                <div className="form-row mb-16">
+                                    <div className="form-group">
+                                        <label>First Name</label>
+                                        <input
+                                            value={roleProfile.firstName || ''}
+                                            onChange={e => setField('firstName', e.target.value)}
+                                            required
+                                        />
+                                    </div>
+                                    <div className="form-group">
+                                        <label>Middle Name</label>
+                                        <input
+                                            value={roleProfile.middleName || ''}
+                                            onChange={e => setField('middleName', e.target.value)}
+                                        />
+                                    </div>
+                                    <div className="form-group">
+                                        <label>Last Name</label>
+                                        <input
+                                            value={roleProfile.lastName || ''}
+                                            onChange={e => setField('lastName', e.target.value)}
+                                            required
+                                        />
+                                    </div>
                                 </div>
-                                <div className="form-group">
-                                    <label>Last Name</label>
-                                    <input
-                                        value={roleProfile.lastName || ''}
-                                        onChange={e => setField('lastName', e.target.value)}
-                                        required
-                                    />
+
+                                <div className="form-row mb-16">
+                                    <div className="form-group">
+                                        <label>Gender</label>
+                                        <select value={roleProfile.gender || ''} onChange={e => setField('gender', e.target.value)}>
+                                            <option value="MALE">Male</option>
+                                            <option value="FEMALE">Female</option>
+                                            <option value="OTHER">Other</option>
+                                        </select>
+                                    </div>
+                                    <div className="form-group">
+                                        <label>Date of Birth</label>
+                                        <input 
+                                            type="date" 
+                                            value={roleProfile.dateOfBirth ? roleProfile.dateOfBirth.substring(0, 10) : ''} 
+                                            onChange={e => setField('dateOfBirth', e.target.value)} 
+                                        />
+                                    </div>
                                 </div>
-                            </div>
+                            </>
                         )}
 
                         <div className="form-group mb-16">
@@ -231,6 +267,24 @@ export default function ProfilePage() {
                                 onChange={e => setField('phone', e.target.value)}
                             />
                         </div>
+
+                        {isPendingMatric && (
+                            <div className="form-group mb-16" style={{ padding: '16px', background: 'var(--amber-dim)', border: '1px solid var(--amber)', borderRadius: '8px' }}>
+                                <label style={{ color: 'var(--amber)', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 600 }}>
+                                    <Shield size={16} /> Official Matriculation Number Required
+                                </label>
+                                <p style={{ fontSize: '0.8rem', color: 'inherit', marginBottom: '12px', opacity: 0.9 }}>
+                                    Your account was created via email with a temporary ID. Please enter your official campus matriculation number below so your grades and attendance can be synced. This can only be done once.
+                                </p>
+                                <input
+                                    value={roleProfile.matricNumber || ''}
+                                    onChange={e => setField('matricNumber', e.target.value)}
+                                    placeholder="e.g. CSC/21/001"
+                                    required
+                                    style={{ borderColor: 'var(--amber)', background: 'var(--bg-body)' }}
+                                />
+                            </div>
+                        )}
 
                         {user.role !== 'ADMIN' && (
                             <>

@@ -208,7 +208,7 @@ router.post('/', requireRole('ADMIN'), async (req, res, next) => {
 // PUT /api/students/:id
 router.put('/:id', requireRole('ADMIN'), async (req, res, next) => {
     try {
-        const { firstName, lastName, middleName, gender, dateOfBirth, phone, address, departmentId, facultyId, level, entryYear, avatarUrl, isActive } = req.body;
+        const { firstName, lastName, middleName, gender, dateOfBirth, phone, address, departmentId, facultyId, level, entryYear, avatarUrl, isActive, matricNumber, email, password } = req.body;
         const student = await prisma.student.update({
             where: { id: req.params.id },
             data: {
@@ -217,24 +217,75 @@ router.put('/:id', requireRole('ADMIN'), async (req, res, next) => {
                 phone, address, departmentId, facultyId,
                 level: level ? Number(level) : undefined,
                 entryYear,
-                avatarUrl
+                avatarUrl,
+                ...(matricNumber && { matricNumber: matricNumber.toUpperCase().trim() })
             },
         });
-        if (typeof isActive === 'boolean') {
-            await prisma.user.update({ where: { id: student.userId }, data: { isActive } });
+        
+        const userUpdateData = {};
+        if (typeof isActive === 'boolean') userUpdateData.isActive = isActive;
+        if (email) userUpdateData.email = email.toLowerCase().trim();
+        if (password) {
+            userUpdateData.password = await bcrypt.hash(password, 12);
+        }
+
+        if (Object.keys(userUpdateData).length > 0) {
+            await prisma.user.update({ where: { id: student.userId }, data: userUpdateData });
         }
         res.json({ student, message: 'Student updated' });
-    } catch (err) { next(err); }
+    } catch (err) { 
+        if (err.code === 'P2002') return res.status(409).json({ error: 'Email or matric number already exists' });
+        next(err); 
+    }
 });
 
-// DELETE /api/students/:id (soft delete)
 router.delete('/:id', requireRole('ADMIN'), async (req, res, next) => {
     try {
-        const student = await prisma.student.findUnique({ where: { id: req.params.id } });
+        const { id } = req.params;
+        const student = await prisma.student.findUnique({
+            where: { id },
+            include: { user: true }
+        });
+        
         if (!student) return res.status(404).json({ error: 'Student not found' });
-        await prisma.user.update({ where: { id: student.userId }, data: { isActive: false } });
-        res.json({ message: 'Student deactivated' });
-    } catch (err) { next(err); }
+
+        // Perform hard delete of student and all associated records in a transaction
+        await prisma.$transaction(async (tx) => {
+            // 1. Delete CBT related data
+            // Clear replies to messages that might be deleted next (to avoid FK constraints)
+            await tx.message.updateMany({
+                where: { replyTo: { OR: [{ senderId: student.userId }, { receiverId: student.userId }] } },
+                data: { replyToId: null }
+            });
+            
+            await tx.cbtAnswer.deleteMany({ where: { attempt: { studentId: id } } });
+            await tx.cbtAttempt.deleteMany({ where: { studentId: id } });
+            
+            // 2. Delete main academic records
+            await tx.score.deleteMany({ where: { studentId: id } });
+            await tx.attendance.deleteMany({ where: { studentId: id } });
+            await tx.enrollment.deleteMany({ where: { studentId: id } });
+            
+            // 3. Delete messages
+            await tx.message.deleteMany({
+                where: { OR: [{ senderId: student.userId }, { receiverId: student.userId }] }
+            });
+            
+            // 4. Cleanup any sync logs triggered by this student
+            await tx.syncLog.deleteMany({ where: { triggeredBy: student.userId } });
+
+            // 5. Delete student profile
+            await tx.student.delete({ where: { id } });
+            
+            // 6. Delete user account
+            await tx.user.delete({ where: { id: student.userId } });
+        });
+
+        res.json({ message: 'Student and all related data deleted permanently' });
+    } catch (err) { 
+        console.error('Hard delete error:', err);
+        next(err); 
+    }
 });
 
 // POST /api/students/:id/reset-password

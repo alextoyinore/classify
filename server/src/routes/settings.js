@@ -8,11 +8,10 @@ router.use(authenticate, requireRole('ADMIN'));
 
 // In-memory settings (persisted to a JSON file for simplicity)
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
-import { join, dirname } from 'path';
-import { fileURLToPath } from 'url';
+import { join } from 'path';
+import { DATA_DIR, LOGOS_DIR } from '../lib/paths.js';
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const SETTINGS_FILE = join(__dirname, '../../data/settings.json');
+const SETTINGS_FILE = join(DATA_DIR, 'settings.json');
 
 const defaultSettings = {
     schoolName: process.env.SCHOOL_NAME || 'Institution Name',
@@ -23,7 +22,7 @@ const defaultSettings = {
     logoUrl: '',
     currentSession: process.env.CURRENT_SESSION || '2024/2025',
     currentSemester: process.env.CURRENT_SEMESTER || 'FIRST',
-    attendanceWeight: 10,
+    attendanceWeight: 1,
     examDeletionGraceDays: 3,
     updatedAt: new Date().toISOString(),
 };
@@ -37,7 +36,7 @@ export const readSettings = () => {
 
 export const writeSettings = (data) => {
     try {
-        const dir = join(__dirname, '../../data');
+        const dir = join(__dirname, '../data');
         if (!existsSync(dir)) { mkdirSync(dir, { recursive: true }); }
         writeFileSync(SETTINGS_FILE, JSON.stringify({ ...data, updatedAt: new Date().toISOString() }, null, 2));
     } catch (e) { console.error('Failed to write settings:', e); }
@@ -46,9 +45,7 @@ export const writeSettings = (data) => {
 // Logo upload storage
 const logoStorage = multer.diskStorage({
     destination: (req, file, cb) => {
-        const dir = join(__dirname, '../../uploads/logos');
-        if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
-        cb(null, dir);
+        cb(null, LOGOS_DIR);
     },
     filename: (req, file, cb) => {
         const ext = file.originalname.split('.').pop();

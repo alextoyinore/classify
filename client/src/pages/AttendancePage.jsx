@@ -82,6 +82,17 @@ export default function AttendancePage() {
         }
     };
 
+    const handleExtend = async (id) => {
+        try {
+            await api.put(`/attendance/session/${id}/extend`, { minutes: 30 });
+            toast('Session extended by 30 mins ⏳');
+            const liveRes = await api.get('/attendance/active-sessions');
+            setActiveSessions(liveRes.data || []);
+        } catch {
+            toast('Failed to extend session', 'error');
+        }
+    };
+
     useEffect(() => {
         if (!markCourse) { setStudents([]); return; }
         (async () => {
@@ -188,7 +199,7 @@ export default function AttendancePage() {
                         ) : (
                             <div className="table-wrap">
                                 <table>
-                                    <thead><tr><th>Course</th><th>Department</th><th>Level</th><th>Started</th><th>Action</th></tr></thead>
+                                    <thead><tr><th>Course</th><th>Department</th><th>Level</th><th>Started</th><th>Expires</th><th>Action</th></tr></thead>
                                     <tbody>
                                         {activeSessions.map(s => (
                                             <tr key={s.id}>
@@ -196,8 +207,12 @@ export default function AttendancePage() {
                                                 <td>{s.department?.name || 'All Departments'}</td>
                                                 <td>{s.level ? `${s.level}L` : 'All Levels'}</td>
                                                 <td className="text-muted">{new Date(s.startTime).toLocaleTimeString()}</td>
+                                                <td className="text-muted">{s.expiresAt ? new Date(s.expiresAt).toLocaleTimeString() : '—'}</td>
                                                 <td>
-                                                    <button className="btn btn-sm btn-secondary" onClick={() => endSession(s.id)}>End Session</button>
+                                                    <div className="flex gap-8">
+                                                        <button className="btn btn-sm btn-secondary" onClick={() => handleExtend(s.id)}>+30m</button>
+                                                        <button className="btn btn-sm btn-secondary" onClick={() => endSession(s.id)}>End Session</button>
+                                                    </div>
                                                 </td>
                                             </tr>
                                         ))}
