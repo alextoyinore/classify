@@ -19,7 +19,7 @@ export default function TimetableBuilderPage() {
     const [filters, setFilters] = useState({
         departmentId: '',
         semesterId: '',
-        level: 100
+        level: '' // Empty string for All Levels
     });
 
     // Modal state
@@ -182,8 +182,9 @@ export default function TimetableBuilderPage() {
                         <label>Level</label>
                         <select
                             value={filters.level}
-                            onChange={e => setFilters({ ...filters, level: Number(e.target.value) })}
+                            onChange={e => setFilters({ ...filters, level: e.target.value === '' ? '' : Number(e.target.value) })}
                         >
+                            <option value="">All Levels</option>
                             {LEVELS.map(l => <option key={l} value={l}>{l} Level</option>)}
                         </select>
                     </div>

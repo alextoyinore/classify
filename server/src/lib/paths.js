@@ -1,4 +1,4 @@
-import { join, dirname } from 'path';
+﻿import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
 
@@ -7,7 +7,7 @@ const __dirname = dirname(__filename);
 
 // This file is in server/src/lib/paths.js
 // We want PROJECT_ROOT to be server/
-export const PROJECT_ROOT = join(__dirname, '../../');
+export const PROJECT_ROOT = join(__dirname, '');
 
 export const UPLOADS_DIR = join(PROJECT_ROOT, 'uploads');
 export const DATA_DIR = join(PROJECT_ROOT, 'data');
@@ -24,3 +24,4 @@ export const LOGOS_DIR = join(UPLOADS_DIR, 'logos');
         console.error(`Failed to create directory ${dir}:`, err.message);
     }
 });
+
