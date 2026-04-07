@@ -57,8 +57,10 @@ enum SyncStatus {
 
 enum ResourceType {
   VIDEO
+  AUDIO
   READING
   SLIDE
+  SPREADSHEET
   OTHER
 }
 
