@@ -53,7 +53,10 @@ app.use(cors({
 }));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
-app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
+const uploadsPath = path.basename(__dirname) === 'src' 
+  ? path.join(__dirname, '..', 'uploads') 
+  : path.join(__dirname, 'uploads');
+app.use('/uploads', express.static(uploadsPath));
 
 // ─── Static Files (Production) ──────────────────────────────
 // In the bundled/production version, the client is moved to a 'public' folder next to the script
@@ -88,6 +91,10 @@ app.get('*', (req, res, next) => {
   // If the request is for an API route, let it fall through to 404 handler
   if (req.path.startsWith('/api/')) {
     return next();
+  }
+  // Don't serve the SPA for file paths — let them 404 naturally
+  if (req.path.startsWith('/uploads/')) {
+    return res.status(404).json({ error: 'File not found' });
   }
   res.sendFile(path.join(clientDistPath, 'index.html'), (err) => {
     if (err) {

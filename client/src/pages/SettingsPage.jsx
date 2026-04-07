@@ -7,7 +7,7 @@ const defaultForm = {
     schoolName: '', schoolAcronym: '', schoolAddress: '',
     schoolEmail: '', schoolPhone: '', logoUrl: '',
     currentSession: '', currentSemester: 'FIRST',
-    attendanceWeight: 10,
+    attendanceWeight: 1,
     examDeletionGraceDays: 3,
 };
 
@@ -28,8 +28,8 @@ export default function SettingsPage() {
                     api.get('/settings/active-session'),
                 ]);
                 setSessionInfo(activeSession);
-                setForm({ 
-                    ...defaultForm, 
+                setForm({
+                    ...defaultForm,
                     ...settingsData.settings,
                     currentSession: activeSession?.currentSession || settingsData.settings?.currentSession || defaultForm.currentSession,
                     currentSemester: activeSession?.currentSemester || settingsData.settings?.currentSemester || defaultForm.currentSemester,

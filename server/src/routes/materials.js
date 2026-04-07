@@ -4,6 +4,7 @@ import { join } from 'path';
 import fs from 'fs';
 import { prisma } from '../lib/prisma.js';
 import { authenticate, requireRole } from '../middleware/auth.js';
+import { UPLOADS_DIR } from '../lib/paths.js';
 
 const router = Router();
 router.use(authenticate);
@@ -11,7 +12,7 @@ router.use(authenticate);
 // ─── Multer Configuration ─────────────────────────────────────
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
-        const dir = 'uploads/materials';
+        const dir = `${UPLOADS_DIR}/materials`;
         if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
         cb(null, dir);
     },
@@ -24,13 +25,29 @@ const storage = multer.diskStorage({
 
 const upload = multer({
     storage,
-    limits: { fileSize: 50 * 1024 * 1024 }, // 50MB limit
+    limits: { fileSize: 200 * 1024 * 1024 }, // 50MB limit
     fileFilter: (req, file, cb) => {
-        const allowedTypes = ['video/mp4', 'application/pdf', 'application/vnd.ms-powerpoint', 'application/vnd.openxmlformats-officedocument.presentationml.presentation'];
-        if (allowedTypes.includes(file.mimetype)) {
+        const allowedPrefixes = ['video/', 'audio/', 'image/', 'text/'];
+        const allowedTypes = [
+            'application/pdf', 
+            'application/vnd.ms-powerpoint', 
+            'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+            'application/msword',
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'application/vnd.ms-excel',
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'application/zip',
+            'application/x-rar-compressed',
+            'application/x-7z-compressed',
+            'application/rtf',
+            'application/epub+zip',
+            'application/octet-stream'
+        ];
+        
+        if (allowedTypes.includes(file.mimetype) || allowedPrefixes.some(prefix => file.mimetype.startsWith(prefix))) {
             cb(null, true);
         } else {
-            cb(new Error('Invalid file type. Only MP4, PDF, and PPT/PPTX are allowed.'));
+            cb(new Error('Invalid file type. Server only accepts documents, media, images, or archives.'));
         }
     }
 });

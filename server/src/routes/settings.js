@@ -11,7 +11,7 @@ import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
 import { join } from 'path';
 import { DATA_DIR, LOGOS_DIR } from '../lib/paths.js';
 
-const SETTINGS_FILE = join(DATA_DIR, 'settings.json');
+const SETTINGS_FILE = join(DATA_DIR, '/settings.json');
 
 const defaultSettings = {
     schoolName: process.env.SCHOOL_NAME || 'Institution Name',
@@ -36,8 +36,8 @@ export const readSettings = () => {
 
 export const writeSettings = (data) => {
     try {
-        const dir = join(__dirname, '../data');
-        if (!existsSync(dir)) { mkdirSync(dir, { recursive: true }); }
+        // const dir = join(__dirname, '/data');
+        if (!existsSync(DATA_DIR)) { mkdirSync(dir, { recursive: true }); }
         writeFileSync(SETTINGS_FILE, JSON.stringify({ ...data, updatedAt: new Date().toISOString() }, null, 2));
     } catch (e) { console.error('Failed to write settings:', e); }
 };

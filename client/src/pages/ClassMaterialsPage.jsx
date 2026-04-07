@@ -84,8 +84,11 @@ export default function ClassMaterialsPage() {
                 >
                     <option value="">All Formats</option>
                     <option value="VIDEO">Videos</option>
-                    <option value="READING">Readings (PDF)</option>
-                    <option value="SLIDE">Slides (PPTX)</option>
+                    <option value="AUDIO">Audio</option>
+                    <option value="READING">Documents & Readings</option>
+                    <option value="SLIDE">Slides</option>
+                    <option value="SPREADSHEET">Spreadsheets</option>
+                    <option value="OTHER">Other / Archives</option>
                 </select>
             </div>
 
@@ -118,15 +121,19 @@ export default function ClassMaterialsPage() {
                                 justifyContent: 'center',
                                 position: 'relative'
                             }}>
-                                {m.type === 'VIDEO' ? (
+                                {(m.type === 'VIDEO' || m.type === 'AUDIO') ? (
                                     <div style={{ color: '#fff', textAlign: 'center' }}>
                                         <Play size={48} />
-                                        <div style={{ fontSize: '0.7rem', marginTop: 8, opacity: 0.6 }}>Video Recording</div>
+                                        <div style={{ fontSize: '0.7rem', marginTop: 8, opacity: 0.6 }}>{m.type === 'VIDEO' ? 'Video Recording' : 'Audio Recording'}</div>
                                     </div>
                                 ) : (
                                     <div style={{ color: 'var(--text-muted)', textAlign: 'center' }}>
                                         <FileText size={48} />
-                                        <div style={{ fontSize: '0.7rem', marginTop: 8 }}>{m.type === 'READING' ? 'PDF Document' : 'Slide Deck'}</div>
+                                        <div style={{ fontSize: '0.7rem', marginTop: 8 }}>
+                                            {m.type === 'READING' ? 'Document' : 
+                                             m.type === 'SLIDE' ? 'Slide Deck' : 
+                                             m.type === 'SPREADSHEET' ? 'Spreadsheet' : 'Archive / File'}
+                                        </div>
                                     </div>
                                 )}
                                 <div style={{
@@ -167,6 +174,11 @@ export default function ClassMaterialsPage() {
                                                         <Play size={14} /> Watch
                                                     </button>
                                                 )}
+                                                {m.type === 'AUDIO' && (
+                                                    <button onClick={() => setViewingMaterial(m)} className="btn btn-primary btn-sm">
+                                                        <Play size={14} /> Listen
+                                                    </button>
+                                                )}
                                                 {m.type === 'READING' && (
                                                     <button onClick={() => setViewingMaterial(m)} className="btn btn-secondary btn-sm">
                                                         <FileText size={14} /> Read
@@ -200,13 +212,22 @@ export default function ClassMaterialsPage() {
                             </div>
                         </div>
                         <div className="modal-body" style={{ padding: 0, background: '#000', minHeight: '50vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            {viewingMaterial.type === 'VIDEO' ? (
-                                <video
-                                    src={viewingMaterial.url.startsWith('http') ? viewingMaterial.url : `${SERVER_URL}${viewingMaterial.url}`}
-                                    controls
-                                    autoPlay
-                                    style={{ width: '100%', maxHeight: '80vh' }}
-                                />
+                            {(viewingMaterial.type === 'VIDEO' || viewingMaterial.type === 'AUDIO') ? (
+                                viewingMaterial.type === 'VIDEO' ? (
+                                    <video
+                                        src={viewingMaterial.url.startsWith('http') ? viewingMaterial.url : `${SERVER_URL}${viewingMaterial.url}`}
+                                        controls
+                                        autoPlay
+                                        style={{ width: '100%', maxHeight: '80vh' }}
+                                    />
+                                ) : (
+                                    <audio
+                                        src={viewingMaterial.url.startsWith('http') ? viewingMaterial.url : `${SERVER_URL}${viewingMaterial.url}`}
+                                        controls
+                                        autoPlay
+                                        style={{ width: '100%', maxWidth: '400px' }}
+                                    />
+                                )
                             ) : viewingMaterial.type === 'READING' ? (
                                 <iframe
                                     src={viewingMaterial.url.startsWith('http') ? viewingMaterial.url : `${SERVER_URL}${viewingMaterial.url}`}

@@ -643,9 +643,11 @@ export default function CourseDetail() {
                                         <label>Type</label>
                                         <select value={resourceForm.type} onChange={e => setResourceForm({ ...resourceForm, type: e.target.value })}>
                                             <option value="VIDEO">Video Recording</option>
-                                            <option value="READING">Reading Material (PDF)</option>
-                                            <option value="SLIDE">Slides (PPTX)</option>
-                                            <option value="OTHER">Other</option>
+                                            <option value="AUDIO">Audio Recording</option>
+                                            <option value="READING">Document / Reading Material</option>
+                                            <option value="SLIDE">Slides / Presentation</option>
+                                            <option value="SPREADSHEET">Spreadsheet</option>
+                                            <option value="OTHER">Other / Archive</option>
                                         </select>
                                     </div>
                                     <div className="form-group">
@@ -663,9 +665,9 @@ export default function CourseDetail() {
                                     </div>
                                 ) : (
                                     <div className="form-group">
-                                        <label>File Upload (Max 50MB) *</label>
+                                        <label>File Upload (Max 200MB) *</label>
                                         <input type="file" required={!resourceForm.isExternal} onChange={e => setUploadingFile(e.target.files[0])} />
-                                        <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: 4 }}>Allowed: MP4, PDF, PPT, PPTX</div>
+                                        <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: 4 }}>Allowed: Video, Audio, PDF, PPT, Word, Excel, Archives</div>
                                     </div>
                                 )}
                             </div>
@@ -692,13 +694,22 @@ export default function CourseDetail() {
                             </div>
                         </div>
                         <div className="modal-body" style={{ padding: 0, background: '#000', minHeight: '50vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            {viewingMaterial.type === 'VIDEO' ? (
-                                <video
-                                    src={viewingMaterial.url.startsWith('http') ? viewingMaterial.url : `${SERVER_URL}${viewingMaterial.url}`}
-                                    controls
-                                    autoPlay
-                                    style={{ width: '100%', maxHeight: '80vh' }}
-                                />
+                            {(viewingMaterial.type === 'VIDEO' || viewingMaterial.type === 'AUDIO') ? (
+                                viewingMaterial.type === 'VIDEO' ? (
+                                    <video
+                                        src={viewingMaterial.url.startsWith('http') ? viewingMaterial.url : `${SERVER_URL}${viewingMaterial.url}`}
+                                        controls
+                                        autoPlay
+                                        style={{ width: '100%', maxHeight: '80vh' }}
+                                    />
+                                ) : (
+                                    <audio
+                                        src={viewingMaterial.url.startsWith('http') ? viewingMaterial.url : `${SERVER_URL}${viewingMaterial.url}`}
+                                        controls
+                                        autoPlay
+                                        style={{ width: '100%', maxWidth: '400px' }}
+                                    />
+                                )
                             ) : viewingMaterial.type === 'READING' ? (
                                 <iframe
                                     src={viewingMaterial.url.startsWith('http') ? viewingMaterial.url : `${SERVER_URL}${viewingMaterial.url}`}
