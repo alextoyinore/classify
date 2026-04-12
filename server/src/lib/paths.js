@@ -1,4 +1,4 @@
-import { join, dirname } from 'path';
+import { join, dirname, basename } from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
 
@@ -6,7 +6,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 // Robust path detection for Dev (server/src/lib/) vs Prod (server/dist/)
-const isSrc = path.basename(dirname(__dirname)) === 'src';
+const isSrc = basename(dirname(__dirname)) === 'src';
 
 export const PROJECT_ROOT = isSrc
     ? join(__dirname, '..', '..') // server/src/lib -> server/
