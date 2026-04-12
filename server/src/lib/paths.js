@@ -1,13 +1,16 @@
-﻿import { join, dirname } from 'path';
+import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-// This file is in server/src/lib/paths.js
-// We want PROJECT_ROOT to be server/
-export const PROJECT_ROOT = join(__dirname, '');
+// Robust path detection for Dev (server/src/lib/) vs Prod (server/dist/)
+const isSrc = path.basename(dirname(__dirname)) === 'src';
+
+export const PROJECT_ROOT = isSrc
+    ? join(__dirname, '..', '..') // server/src/lib -> server/
+    : join(__dirname, '');       // server/dist/ -> server/dist/
 
 export const UPLOADS_DIR = join(PROJECT_ROOT, 'uploads');
 export const DATA_DIR = join(PROJECT_ROOT, 'data');

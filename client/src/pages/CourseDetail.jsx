@@ -138,6 +138,17 @@ export default function CourseDetail() {
         setEnrolling(false);
     };
 
+    const handleUnenrollStudent = async (studentId, studentName) => {
+        if (!window.confirm(`Are you sure you want to unenroll ${studentName} from this course?`)) return;
+        try {
+            await api.delete(`/courses/${id}/enroll/${studentId}`);
+            toast(`${studentName} unenrolled successfully`);
+            setStudents(students.filter(s => s.student.id !== studentId));
+        } catch (err) {
+            toast(err.response?.data?.error || 'Unenrollment failed', 'error');
+        }
+    };
+
     const handleUpdateAssignments = async (e) => {
         e.preventDefault();
         setSavingAssignments(true);
@@ -318,7 +329,7 @@ export default function CourseDetail() {
                 ) : (
                     <div className="table-wrap">
                         <table>
-                            <thead><tr><th>Name</th><th>Matric No.</th><th>Status</th><th>Level</th><th>Session</th><th>Semester</th></tr></thead>
+                            <thead><tr><th>Name</th><th>Matric No.</th><th>Status</th><th>Level</th><th>Session</th><th>Semester</th>{isAdmin && <th>Actions</th>}</tr></thead>
                             <tbody>
                                 {students.map(e => (
                                     <tr key={e.id}>
@@ -344,6 +355,13 @@ export default function CourseDetail() {
                                         <td><span className="badge badge-blue">{e.student?.level}L</span></td>
                                         <td style={{ fontSize: '0.85rem' }}>{e.session}</td>
                                         <td><span className="badge badge-muted">{e.semester}</span></td>
+                                        {isAdmin && (
+                                            <td>
+                                                <button className="btn btn-danger btn-sm btn-icon" onClick={() => handleUnenrollStudent(e.student?.id, `${e.student?.firstName} ${e.student?.lastName}`)} title="Unenroll">
+                                                    <Trash2 size={14} />
+                                                </button>
+                                            </td>
+                                        )}
                                     </tr>
                                 ))}
                             </tbody>

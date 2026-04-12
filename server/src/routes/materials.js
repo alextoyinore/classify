@@ -111,11 +111,25 @@ router.get('/', async (req, res, next) => {
         }
 
         const { courseId, semesterId, type } = req.query;
+
+        // Restriction: Students only see matches for their enrolled courses
+        let enrolledCourseIds = null;
+        if (req.user.role === 'STUDENT') {
+            const enrollments = await prisma.enrollment.findMany({
+                where: { studentId: req.user.student.id },
+                select: { courseId: true }
+            });
+            enrolledCourseIds = enrollments.map(e => e.courseId);
+        }
+
         const resources = await prisma.resource.findMany({
             where: {
                 ...(courseId && { courseId }),
                 ...(semesterId && { semesterId }),
-                ...(type && { type })
+                ...(type && { type }),
+                ...(enrolledCourseIds && {
+                    courseId: { in: enrolledCourseIds }
+                })
             },
             include: {
                 uploadedBy: { select: { id: true, role: true, instructor: { select: { firstName: true, lastName: true } }, admin: { select: { fullName: true } } } },

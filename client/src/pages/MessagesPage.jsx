@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Send, User as UserIcon, AlertCircle, Search, ArrowLeft, Reply, X, Megaphone, Users, Book } from 'lucide-react';
-import api from '../api';
+import { Send, User as UserIcon, AlertCircle, Search, ArrowLeft, Reply, X, Megaphone, Users, Book, Paperclip, FileText } from 'lucide-react';
+import api, { SERVER_URL } from '../api';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import MessagesPinLock from '../components/MessagesPinLock';
@@ -14,6 +14,7 @@ export default function MessagesPage() {
     const [selectedUser, setSelectedUser] = useState(null);
     const [messages, setMessages] = useState([]);
     const [inputText, setInputText] = useState('');
+    const [attachment, setAttachment] = useState(null);
     const [userSearch, setUserSearch] = useState('');
     const [departmentFilter, setDepartmentFilter] = useState('');
     const [levelFilter, setLevelFilter] = useState('');
@@ -186,14 +187,17 @@ export default function MessagesPage() {
 
     const handleSend = async (e) => {
         e.preventDefault();
-        if (!inputText.trim() || !selectedUser) return;
+        if ((!inputText.trim() && !attachment) || !selectedUser) return;
 
         const tempId = Date.now().toString();
+        const objUrl = attachment ? URL.createObjectURL(attachment) : null;
+        
         const newMsg = {
             id: tempId,
             senderId: user.id,
             receiverId: selectedUser.id,
-            content: inputText.trim(),
+            content: inputText.trim() || '',
+            attachmentUrl: objUrl,
             createdAt: new Date().toISOString(),
             isRead: false,
             replyTo: replyingTo ? { content: replyingTo.content, senderId: replyingTo.senderId } : null
@@ -202,15 +206,22 @@ export default function MessagesPage() {
         // Optimistic update
         setMessages(prev => [...prev, newMsg]);
         setInputText('');
+        const attachedFile = attachment;
+        setAttachment(null);
+        
         const replyId = replyingTo?.id;
         setReplyingTo(null);
         setSending(true);
 
         try {
-            await api.post('/messages', {
-                receiverId: selectedUser.id,
-                content: newMsg.content,
-                replyToId: replyId
+            const formData = new FormData();
+            formData.append('receiverId', selectedUser.id);
+            if (newMsg.content) formData.append('content', newMsg.content);
+            if (replyId) formData.append('replyToId', replyId);
+            if (attachedFile) formData.append('file', attachedFile);
+            
+            await api.post('/messages', formData, {
+                headers: { 'Content-Type': 'multipart/form-data' }
             });
             // Refetch to get actual DB record and handle state
             fetchMessages(selectedUser.id, true);
@@ -380,7 +391,18 @@ export default function MessagesPage() {
                                                             <div className="reply-ref-content">{msg.replyTo.content}</div>
                                                         </div>
                                                     )}
-                                                    <div className="message-content">{msg.content}</div>
+                                                    {msg.attachmentUrl && (
+                                                        <div className="message-attachment" style={{ marginBottom: msg.content ? 8 : 0 }}>
+                                                            {msg.attachmentUrl.match(/\.(jpeg|jpg|gif|png|webp|svg)$/i) || msg.attachmentUrl.startsWith('blob:') ? (
+                                                                <img src={msg.attachmentUrl.startsWith('blob:') || msg.attachmentUrl.startsWith('http') ? msg.attachmentUrl : `${SERVER_URL}${msg.attachmentUrl}`} alt="attachment" style={{ maxWidth: '100%', maxHeight: '200px', borderRadius: '8px', cursor: 'pointer' }} onClick={() => window.open(msg.attachmentUrl.startsWith('blob:') || msg.attachmentUrl.startsWith('http') ? msg.attachmentUrl : `${SERVER_URL}${msg.attachmentUrl}`, '_blank')} />
+                                                            ) : (
+                                                                <a href={msg.attachmentUrl.startsWith('http') ? msg.attachmentUrl : `${SERVER_URL}${msg.attachmentUrl}`} target="_blank" rel="noreferrer" className="attachment-link" style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'inherit', textDecoration: 'none', background: 'rgba(0,0,0,0.1)', padding: '6px 10px', borderRadius: 6, fontSize: '0.85rem' }}>
+                                                                    <FileText size={16} /> View/Download File
+                                                                </a>
+                                                            )}
+                                                        </div>
+                                                    )}
+                                                    {msg.content && <div className="message-content">{msg.content}</div>}
                                                     <button className="message-reply-btn" onClick={() => setReplyingTo(msg)} title="Reply">
                                                         <Reply size={14} />
                                                     </button>
@@ -409,7 +431,20 @@ export default function MessagesPage() {
                                     </button>
                                 </div>
                             )}
+                            {attachment && (
+                                <div className="attachment-composer-bar" style={{ display: 'flex', alignItems: 'center', padding: '8px 16px', background: 'var(--bg-secondary)', borderTop: '1px solid var(--border)' }}>
+                                    <FileText size={16} style={{ color: 'var(--accent)', marginRight: 8 }} />
+                                    <span style={{ fontSize: '0.85rem', flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{attachment.name}</span>
+                                    <button type="button" onClick={() => setAttachment(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}>
+                                        <X size={16} />
+                                    </button>
+                                </div>
+                            )}
                             <div className="input-row">
+                                <label className="btn-attachment" title="Attach image or file" style={{ display: 'flex', alignItems: 'center', padding: '0 8px', cursor: 'pointer', color: 'var(--text-muted)' }}>
+                                    <Paperclip size={18} />
+                                    <input type="file" style={{ display: 'none' }} onChange={(e) => setAttachment(e.target.files[0])} disabled={sending} />
+                                </label>
                                 <input
                                     type="text"
                                     placeholder={`Message ${getDisplayName(selectedUser)}...`}
@@ -417,7 +452,7 @@ export default function MessagesPage() {
                                     onChange={(e) => setInputText(e.target.value)}
                                     disabled={sending}
                                 />
-                                <button type="submit" disabled={!inputText.trim() || sending} className="btn-send">
+                                <button type="submit" disabled={(!inputText.trim() && !attachment) || sending} className="btn-send">
                                     <Send size={18} />
                                 </button>
                             </div>

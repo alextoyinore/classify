@@ -57,6 +57,12 @@ export default function CoursesPage() {
         catch (err) { toast(err.response?.data?.error || 'Delete failed', 'error'); }
     };
 
+    const handleSelfUnenroll = async (id, title) => {
+        if (!confirm(`Are you sure you want to unenroll from "${title}"?`)) return;
+        try { await api.delete(`/courses/${id}/self-unenroll`); toast('Unenrolled successfully'); load(); }
+        catch (err) { toast(err.response?.data?.error || 'Unenroll failed', 'error'); }
+    };
+
     const pages = Math.ceil(total / limit);
 
     return (
@@ -90,7 +96,7 @@ export default function CoursesPage() {
                     <>
                         <div className="table-wrap">
                             <table>
-                                <thead><tr><th>Code</th><th>Title</th><th>Department</th><th>Level</th>{isAdmin && <th>Semester</th>}<th>Credits</th><th>Status</th>{isAdmin && <th>Actions</th>}</tr></thead>
+                                <thead><tr><th>Code</th><th>Title</th><th>Department</th><th>Level</th>{isAdmin && <th>Semester</th>}<th>Credits</th><th>Status</th>{(isAdmin || user?.role === 'STUDENT') && <th>Actions</th>}</tr></thead>
                                 <tbody>
                                     {courses.map(c => (
                                         <tr key={c.id}>
@@ -112,11 +118,18 @@ export default function CoursesPage() {
                                             )}
                                             <td style={{ textAlign: 'center' }}>{c.creditUnits || 'N/A'}</td>
                                             <td><span className={`badge ${c.isActive ? 'badge-green' : 'badge-red'}`}>{c.isActive ? 'Active' : 'Inactive'}</span></td>
-                                            {isAdmin && (
+                                            {(isAdmin || user?.role === 'STUDENT') && (
                                                 <td>
                                                     <div className="flex gap-8">
-                                                        <button className="btn btn-secondary btn-sm btn-icon" onClick={() => openEdit(c)}><Edit2 size={14} /></button>
-                                                        <button className="btn btn-danger btn-sm btn-icon" onClick={() => handleDelete(c.id, c.title)}><Trash2 size={14} /></button>
+                                                        {isAdmin && (
+                                                            <>
+                                                                <button className="btn btn-secondary btn-sm btn-icon" onClick={() => openEdit(c)}><Edit2 size={14} /></button>
+                                                                <button className="btn btn-danger btn-sm btn-icon" onClick={() => handleDelete(c.id, c.title)}><Trash2 size={14} /></button>
+                                                            </>
+                                                        )}
+                                                        {user?.role === 'STUDENT' && (
+                                                            <button className="btn btn-danger btn-sm" onClick={() => handleSelfUnenroll(c.id, c.title)}>Unenroll</button>
+                                                        )}
                                                     </div>
                                                 </td>
                                             )}

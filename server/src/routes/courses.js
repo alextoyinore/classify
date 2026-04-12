@@ -298,4 +298,15 @@ router.delete('/:id/enroll/:studentId', requireRole('ADMIN'), async (req, res, n
     } catch (err) { next(err); }
 });
 
+// DELETE /api/courses/:id/self-unenroll
+router.delete('/:id/self-unenroll', requireRole('STUDENT'), async (req, res, next) => {
+    try {
+        const studentId = req.user.student.id;
+        await prisma.enrollment.deleteMany({
+            where: { courseId: req.params.id, studentId },
+        });
+        res.json({ message: 'Successfully unenrolled from course' });
+    } catch (err) { next(err); }
+});
+
 export default router;

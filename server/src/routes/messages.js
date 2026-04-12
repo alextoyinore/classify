@@ -1,9 +1,33 @@
 import { Router } from 'express';
+import multer from 'multer';
+import fs from 'fs';
 import { prisma } from '../lib/prisma.js';
 import { authenticate } from '../middleware/auth.js';
 import { isStudentInExamPeriod } from '../lib/examRestrictions.js';
+import { UPLOADS_DIR } from '../lib/paths.js';
 
 const router = Router();
+router.use(authenticate);
+
+// ─── Multer Configuration ─────────────────────────────────────
+const storage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        const dir = `${UPLOADS_DIR}/messages`;
+        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+        cb(null, dir);
+    },
+    filename: (req, file, cb) => {
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+        const ext = file.originalname.split('.').pop();
+        cb(null, `attachment-${uniqueSuffix}.${ext}`);
+    }
+});
+
+const upload = multer({
+    storage,
+    limits: { fileSize: 50 * 1024 * 1024 } // 50MB limit
+});
+
 router.use(authenticate);
 
 // ─── GET /api/messages/users ─────────────────────────────────────────────────
@@ -119,14 +143,14 @@ router.get('/:userId', async (req, res, next) => {
 });
 
 // ─── POST /api/messages ───────────────────────────────────────────────────────
-router.post('/', async (req, res, next) => {
+router.post('/', upload.single('file'), async (req, res, next) => {
     try {
         const { receiverId, content, replyToId } = req.body;
         const currentUserId = req.user.id;
         const role = req.user.role;
 
-        if (!receiverId || !content) {
-            return res.status(400).json({ error: 'Receiver and content are required' });
+        if (!receiverId || (!content && !req.file)) {
+            return res.status(400).json({ error: 'Receiver and either content or file are required' });
         }
 
         // Check if receiver exists
@@ -169,11 +193,17 @@ router.post('/', async (req, res, next) => {
             }
         }
 
+        let attachmentUrl = null;
+        if (req.file) {
+            attachmentUrl = `/uploads/messages/${req.file.filename}`;
+        }
+
         const message = await prisma.message.create({
             data: {
                 senderId: currentUserId,
                 receiverId,
-                content,
+                content: content || null,
+                attachmentUrl,
                 replyToId: replyToId || null
             },
             include: {

@@ -14,9 +14,14 @@ router.post('/session', requireRole('ADMIN', 'INSTRUCTOR'), async (req, res, nex
         const { courseId, semesterId, departmentId, level } = req.body;
         if (!courseId || !semesterId) return res.status(400).json({ error: 'courseId and semesterId required' });
 
-        // Deactivate existing sessions for this course
+        // Deactivate existing sessions for this course, department, and level
         await prisma.attendanceSession.updateMany({
-            where: { courseId, isActive: true },
+            where: { 
+                courseId, 
+                departmentId: departmentId || null,
+                level: level ? parseInt(level) : null,
+                isActive: true 
+            },
             data: { isActive: false }
         });
 
