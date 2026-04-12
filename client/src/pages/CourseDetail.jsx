@@ -47,13 +47,13 @@ export default function CourseDetail() {
                 const [cRes, sRes, dRes, curRes] = await Promise.all([
                     api.get(`/courses/${id}`),
                     api.get(`/courses/${id}/students`),
-                    isAdmin ? api.get(`/departments`) : Promise.resolve({ data: [] }),
+                    isAdmin || isInstructor ? api.get(`/departments`) : Promise.resolve({ data: [] }),
                     api.get('/sessions/current')
                 ]);
                 setCourse(cRes.data);
                 setTopics(cRes.data.topics || []);
                 setStudents(sRes.data || []);
-                if (isAdmin) {
+                if (isAdmin || isInstructor) {
                     setAllDepartments(dRes.data || []);
                     setEditLevels(cRes.data.levels || []);
                     setEditDepts(cRes.data.departments?.map(d => d.id) || []);
@@ -285,7 +285,7 @@ export default function CourseDetail() {
             </div>
 
             <div className="tabs">
-                {['overview', 'curriculum', 'resources', 'students', isAdmin && 'enroll', isAdmin && 'assignments'].filter(Boolean).map(t => (
+                {['overview', 'curriculum', 'resources', 'students', (isAdmin || isInstructor) && 'enroll', (isAdmin || isInstructor) && 'assignments'].filter(Boolean).map(t => (
                     <button key={t} className={`tab-btn ${tab === t ? 'active' : ''}`} onClick={() => setTab(t)}>
                         {t === 'overview' ? 'Instructors' : t === 'curriculum' ? `Curriculum (${topics.length})` : t === 'resources' ? `Resources (${resources.length})` : t === 'students' ? `Students (${students.length})` : t === 'enroll' ? 'Enroll Students' : 'Assignments'}
                     </button>
@@ -355,7 +355,7 @@ export default function CourseDetail() {
                                         <td><span className="badge badge-blue">{e.student?.level}L</span></td>
                                         <td style={{ fontSize: '0.85rem' }}>{e.session}</td>
                                         <td><span className="badge badge-muted">{e.semester}</span></td>
-                                        {isAdmin && (
+                                        {(isAdmin || isInstructor) && (
                                             <td>
                                                 <button className="btn btn-danger btn-sm btn-icon" onClick={() => handleUnenrollStudent(e.student?.id, `${e.student?.firstName} ${e.student?.lastName}`)} title="Unenroll">
                                                     <Trash2 size={14} />
@@ -370,7 +370,7 @@ export default function CourseDetail() {
                 )
             )}
 
-            {tab === 'enroll' && isAdmin && (
+            {tab === 'enroll' && (isAdmin || isInstructor) && (
                 <div className="card">
                     <div style={{ marginBottom: 32, paddingBottom: 24, borderBottom: '1px solid var(--border)' }}>
                         <h3 style={{ marginBottom: 8, fontWeight: 700 }}>Quick Auto-Enroll</h3>
@@ -433,7 +433,7 @@ export default function CourseDetail() {
                     </div>
 
                     <div style={{ display: 'flex', flexDirection: 'row', gap: 32, flexWrap: 'wrap' }}>
-                        {isAdmin && (
+                        {(isAdmin || isInstructor) && (
                             <div style={{ flex: '1 1 300px', minWidth: 280 }}>
                                 <h4 style={{ fontWeight: 600, marginBottom: 16 }}>
                                     {editingTopicId ? 'Edit Topic' : 'Add New Topic'}
@@ -476,7 +476,7 @@ export default function CourseDetail() {
                                         <div style={{ flex: 1 }}>
                                             <div className="flex items-center justify-between">
                                                 <h4 style={{ fontWeight: 600, fontSize: '1rem', color: 'var(--text-primary)' }}>{topic.title}</h4>
-                                                {isAdmin && (
+                                                {(isAdmin || isInstructor) && (
                                                     <div className="flex gap-8">
                                                         <button type="button" className="btn-icon" style={{ color: 'var(--accent)' }} onClick={() => { setEditingTopicId(topic.id); setTopicForm({ title: topic.title, description: topic.description || '' }); }}>
                                                             <Edit2 size={16} />
@@ -548,7 +548,7 @@ export default function CourseDetail() {
                 </div>
             )}
 
-            {tab === 'assignments' && isAdmin && (
+            {tab === 'assignments' && (isAdmin || isInstructor) && (
                 <div className="card">
                     <h3 style={{ marginBottom: 16, fontWeight: 700 }}>Course Assignments</h3>
                     <form onSubmit={handleUpdateAssignments} style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>

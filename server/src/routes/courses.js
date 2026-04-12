@@ -141,7 +141,7 @@ router.post('/', requireRole('ADMIN'), async (req, res, next) => {
 });
 
 // PUT /api/courses/:id
-router.put('/:id', requireRole('ADMIN'), async (req, res, next) => {
+router.put('/:id', requireRole('ADMIN', 'INSTRUCTOR'), async (req, res, next) => {
     try {
         const { title, description, creditUnits, levels, semesters, departmentIds, isActive, code } = req.body;
 
@@ -239,7 +239,7 @@ router.post('/:id/enroll', requireRole('ADMIN', 'INSTRUCTOR'), async (req, res, 
 });
 
 // POST /api/courses/:id/auto-enroll — auto-enroll based on assignments
-router.post('/:id/auto-enroll', requireRole('ADMIN'), async (req, res, next) => {
+router.post('/:id/auto-enroll', requireRole('ADMIN', 'INSTRUCTOR'), async (req, res, next) => {
     try {
         const { session, semester } = req.body;
         if (!session || !semester) return res.status(400).json({ error: 'Session and semester are required' });
@@ -289,7 +289,7 @@ router.post('/:id/auto-enroll', requireRole('ADMIN'), async (req, res, next) => 
 });
 
 // DELETE /api/courses/:id/enroll/:studentId
-router.delete('/:id/enroll/:studentId', requireRole('ADMIN'), async (req, res, next) => {
+router.delete('/:id/enroll/:studentId', requireRole('ADMIN', 'INSTRUCTOR'), async (req, res, next) => {
     try {
         await prisma.enrollment.deleteMany({
             where: { courseId: req.params.id, studentId: req.params.studentId },
