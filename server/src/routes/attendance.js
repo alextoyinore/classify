@@ -149,20 +149,29 @@ router.post('/self-mark', requireRole('STUDENT'), async (req, res, next) => {
         const { courseId, semesterId } = req.body;
         const studentId = req.user.student.id;
 
+        const student = req.user.student;
         const activeSession = await prisma.attendanceSession.findFirst({
-            where: { courseId, semesterId, isActive: true }
+            where: { 
+                courseId, 
+                semesterId, 
+                isActive: true,
+                course: { enrollments: { some: { studentId: student.id } } },
+                AND: [
+                    { OR: [{ departmentId: student.departmentId }, { departmentId: null }] },
+                    { OR: [{ level: student.level }, { level: null }] }
+                ],
+                OR: [
+                    { expiresAt: null },
+                    { expiresAt: { gt: new Date() } }
+                ]
+            }
         });
 
-        if (!activeSession) return res.status(403).json({ error: 'No active session found for this course' });
+        if (!activeSession) {
+            return res.status(403).json({ error: 'No active session found for your profile in this course' });
+        }
 
-        // Validation: Student dept/level must match if specified in session
-        const student = req.user.student;
-        if (activeSession.departmentId && activeSession.departmentId !== student.departmentId) {
-            return res.status(403).json({ error: 'This session is not for your department' });
-        }
-        if (activeSession.level && activeSession.level !== student.level) {
-            return res.status(403).json({ error: 'This session is not for your level' });
-        }
+
 
         const today = new Date();
         today.setHours(0, 0, 0, 0);
