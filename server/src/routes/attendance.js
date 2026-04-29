@@ -229,6 +229,47 @@ router.post('/mark', requireRole('ADMIN', 'INSTRUCTOR'), async (req, res, next) 
     } catch (err) { next(err); }
 });
 
+// POST /api/attendance/makeup — create/upsert a single backdated record (makeup for missed session)
+router.post('/makeup', requireRole('ADMIN', 'INSTRUCTOR'), async (req, res, next) => {
+    try {
+        const { studentId, courseId, semesterId, date, status = 'PRESENT', note } = req.body;
+        if (!studentId || !courseId || !semesterId || !date)
+            return res.status(400).json({ error: 'studentId, courseId, semesterId, and date are required' });
+
+        const attendanceDate = new Date(date);
+        attendanceDate.setHours(0, 0, 0, 0);
+
+        const record = await prisma.attendance.upsert({
+            where: { studentId_courseId_date: { studentId, courseId, date: attendanceDate } },
+            create: {
+                studentId,
+                courseId,
+                semesterId,
+                date: attendanceDate,
+                status,
+                note: note || 'Makeup attendance',
+                markedById: req.user.id,
+            },
+            update: {
+                status,
+                note: note || 'Makeup attendance',
+                markedById: req.user.id,
+            },
+        });
+
+        // Include student + course info in response
+        const full = await prisma.attendance.findUnique({
+            where: { id: record.id },
+            include: {
+                student: { select: { firstName: true, lastName: true, matricNumber: true } },
+                course:  { select: { code: true, title: true } },
+            }
+        });
+
+        res.status(201).json({ message: 'Makeup attendance saved', record: full });
+    } catch (err) { next(err); }
+});
+
 // GET /api/attendance/report?courseId=&semesterId=&date=&studentId=
 router.get('/report', requireRole('ADMIN', 'INSTRUCTOR'), async (req, res, next) => {
     try {

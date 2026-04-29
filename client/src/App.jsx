@@ -31,6 +31,7 @@ import HowToUsePage from './pages/HowToUsePage';
 import FAQPage from './pages/FAQPage';
 import TimetableBuilderPage from './pages/TimetableBuilderPage';
 import StudentVaultPage from './pages/StudentVaultPage';
+import MyNotesPage from './pages/MyNotesPage';
 
 function ProtectedRoute({ children, roles }) {
   const { user } = useAuth();
@@ -70,6 +71,7 @@ function AppRoutes() {
       <Route path="/results" element={<ProtectedRoute roles={['ADMIN', 'INSTRUCTOR']}><StudentResultsPage /></ProtectedRoute>} />
       <Route path="/my-results" element={<ProtectedRoute roles={['STUDENT']}><MyResultsPage /></ProtectedRoute>} />
       <Route path="/vault" element={<ProtectedRoute roles={['STUDENT']}><StudentVaultPage /></ProtectedRoute>} />
+      <Route path="/my-notes" element={<ProtectedRoute roles={['STUDENT']}><MyNotesPage /></ProtectedRoute>} />
 
       <Route path="/about" element={<ProtectedRoute><AboutPage /></ProtectedRoute>} />
       <Route path="/how-to-use" element={<ProtectedRoute><HowToUsePage /></ProtectedRoute>} />

@@ -34,7 +34,7 @@ router.put('/', authenticate, async (req, res, next) => {
         }
 
         if (role === 'STUDENT') {
-            const { firstName, lastName, phone, address, gender, avatarUrl, departmentId, facultyId, level, matricNumber } = data;
+            const { firstName, lastName, middleName, phone, address, gender, avatarUrl, departmentId, facultyId, level, matricNumber, dateOfBirth } = data;
             
             let updateMatricNumber;
             if (matricNumber) {
@@ -55,12 +55,14 @@ router.put('/', authenticate, async (req, res, next) => {
                     data: {
                         firstName,
                         lastName,
+                        middleName,
                         phone,
                         address,
                         gender,
                         avatarUrl,
                         departmentId,
                         facultyId,
+                        dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : undefined,
                         ...(level ? { level: Number(level) } : {}),
                         ...(updateMatricNumber ? { matricNumber: updateMatricNumber } : {})
                     },

@@ -3,7 +3,8 @@ import { Plus, Edit2, Trash2, Calendar, Clock, MapPin, User, BookOpen, AlertCirc
 import api from '../api';
 import { useToast } from '../context/ToastContext';
 
-const DAYS = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY'];
+const WEEKDAYS = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY'];
+const ALL_DAYS = [...WEEKDAYS, 'SATURDAY'];
 const LEVELS = [100, 200, 300, 400, 500];
 
 export default function TimetableBuilderPage() {
@@ -14,6 +15,9 @@ export default function TimetableBuilderPage() {
     const [semesters, setSemesters] = useState([]);
     const [courses, setCourses] = useState([]);
     const [instructors, setInstructors] = useState([]);
+
+    // Saturday toggle
+    const [showSaturday, setShowSaturday] = useState(false);
 
     // Filters
     const [filters, setFilters] = useState({
@@ -203,21 +207,44 @@ export default function TimetableBuilderPage() {
                         </select>
                     </div>
                 </div>
+                <div className="flex items-center gap-12 mt-16" style={{ paddingTop: 16, borderTop: '1px solid var(--border)' }}>
+                    <button
+                        type="button"
+                        className={`btn btn-sm ${showSaturday ? 'btn-primary' : 'btn-secondary'}`}
+                        onClick={() => setShowSaturday(v => !v)}
+                        style={{ gap: 8 }}
+                    >
+                        <span style={{
+                            width: 28, height: 16, borderRadius: 8,
+                            background: showSaturday ? 'rgba(255,255,255,0.35)' : 'var(--border)',
+                            display: 'inline-flex', alignItems: 'center',
+                            padding: '0 2px', transition: 'background 0.2s'
+                        }}>
+                            <span style={{
+                                width: 12, height: 12, borderRadius: '50%',
+                                background: showSaturday ? '#fff' : 'var(--text-muted)',
+                                transform: showSaturday ? 'translateX(12px)' : 'translateX(0)',
+                                transition: 'transform 0.2s'
+                            }} />
+                        </span>
+                        Include Saturday
+                    </button>
+                    <span className="text-muted" style={{ fontSize: '0.8rem' }}>Sunday is not included in timetable</span>
+                </div>
             </div>
 
             <div className="timetable-container card p-0">
-                <div className="timetable-grid">
-                    <div className="timetable-header-row">
-                        {DAYS.map(day => (
+                <div className="timetable-grid" style={{ '--day-count': showSaturday ? 6 : 5 }}>
+                    <div className="timetable-header-row" style={{ gridTemplateColumns: `repeat(${showSaturday ? 6 : 5}, 1fr)` }}>
+                        {(showSaturday ? ALL_DAYS : WEEKDAYS).map(day => (
                             <div key={day} className="day-header">{day.charAt(0) + day.slice(1).toLowerCase()}</div>
                         ))}
                     </div>
 
-                    <div className="timetable-body">
-                        {/* We'll use a swimlane approach for easier rendering */}
-                        {DAYS.map(day => (
+                    <div className="timetable-body" style={{ gridTemplateColumns: `repeat(${showSaturday ? 6 : 5}, 1fr)` }}>
+                        {(showSaturday ? ALL_DAYS : WEEKDAYS).map(day => (
                             <div key={day} className="day-column">
-                                <div className="day-label-mobile">{day}</div>
+                                <div className="day-label-mobile">{day.charAt(0) + day.slice(1).toLowerCase()}</div>
                                 <div className="entries-list">
                                     {timetable.filter(e => e.dayOfWeek === day).length === 0 ? (
                                         <div className="empty-slot-msg">No lectures</div>
@@ -310,7 +337,7 @@ export default function TimetableBuilderPage() {
                                 <div className="form-group">
                                     <label>Day *</label>
                                     <select value={form.dayOfWeek} onChange={e => setForm({ ...form, dayOfWeek: e.target.value })}>
-                                        {DAYS.map(d => <option key={d} value={d}>{d}</option>)}
+                                        {(showSaturday ? ALL_DAYS : WEEKDAYS).map(d => <option key={d} value={d}>{d.charAt(0) + d.slice(1).toLowerCase()}</option>)}
                                     </select>
                                 </div>
                                 <div className="form-group">
@@ -346,11 +373,10 @@ export default function TimetableBuilderPage() {
                     background: #fff;
                 }
                 .timetable-grid {
-                    min-width: 900px;
+                    min-width: 700px;
                 }
                 .timetable-header-row {
                     display: grid;
-                    grid-template-columns: repeat(7, 1fr);
                     background: var(--bg-secondary);
                     border-bottom: 1px solid var(--border);
                 }
@@ -365,7 +391,6 @@ export default function TimetableBuilderPage() {
                 
                 .timetable-body {
                     display: grid;
-                    grid-template-columns: repeat(7, 1fr);
                     min-height: 400px;
                 }
                 .day-column {

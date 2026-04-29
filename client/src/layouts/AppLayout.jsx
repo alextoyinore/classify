@@ -3,7 +3,7 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import {
     LayoutDashboard, Users, UserCheck, BookOpen, ClipboardCheck,
     FileText, Monitor, Cloud, Settings, LogOut, GraduationCap,
-    ChevronRight, User, Building2, Calendar, Menu, X, AlertTriangle, Trash2, MessageSquare, Info, HelpCircle, HardDrive
+    ChevronRight, User, Building2, Calendar, Menu, X, AlertTriangle, Trash2, MessageSquare, Info, HelpCircle, HardDrive, StickyNote
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import api from '../api';
@@ -30,8 +30,9 @@ const nav = [
             { to: '/attendance', label: 'Attendance', icon: ClipboardCheck, roles: ['ADMIN', 'INSTRUCTOR'] },
             { to: '/exams', label: 'Examinations', icon: FileText, roles: ['ADMIN', 'INSTRUCTOR'] },
             { to: '/results', label: 'Aggregate Results', icon: GraduationCap, roles: ['ADMIN', 'INSTRUCTOR'] },
-            { to: '/my-results', label: 'My Results', icon: GraduationCap, roles: ['STUDENT'] },
-            { to: '/vault', label: 'Private Vault', icon: HardDrive, roles: ['STUDENT'] },
+            { to: '/my-results', label: 'My Results',       icon: GraduationCap, roles: ['STUDENT'] },
+            { to: '/vault',      label: 'Private Vault',    icon: HardDrive,     roles: ['STUDENT'] },
+            { to: '/my-notes',   label: 'My Notes',         icon: StickyNote,    roles: ['STUDENT'] },
             { to: '/academic-sessions', label: 'Academic Sessions', icon: Calendar, roles: ['ADMIN'] },
             { to: '/academic-structure', label: 'Academic Structure', icon: Building2, roles: ['ADMIN'] },
             { to: '/timetable', label: 'Timetable Builder', icon: Calendar, roles: ['ADMIN', 'INSTRUCTOR'] },

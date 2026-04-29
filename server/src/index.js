@@ -21,6 +21,7 @@ import materialsRoutes from './routes/materials.js';
 import messagesRoutes from './routes/messages.js';
 import timetableRoutes from './routes/timetable.js';
 import studentFilesRoutes from './routes/studentFiles.js';
+import notesRoutes from './routes/notes.js';
 import { startDeletionWorker } from './lib/deletionWorker.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -87,6 +88,7 @@ app.use('/api/materials', materialsRoutes);
 app.use('/api/messages', messagesRoutes);
 app.use('/api/timetable', timetableRoutes);
 app.use('/api/student-files', studentFilesRoutes);
+app.use('/api/notes', notesRoutes);
 
 // ─── Catch-all for React Router (SPA) ──────────────────────
 app.get('*', (req, res, next) => {

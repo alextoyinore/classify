@@ -9,10 +9,14 @@ import { readSettings } from './settings.js';
 const router = Router();
 router.use(authenticate);
 
-// GET /api/students/results/aggregate
+// GET /api/students/results/aggregate?page=1&limit=20
 router.get('/results/aggregate', async (req, res, next) => {
     try {
-        const { departmentId, courseId, semesterId, level } = req.query;
+        const { departmentId, courseId, semesterId, level, page = 1, limit = 20 } = req.query;
+        const pageNum  = Math.max(1, parseInt(page)  || 1);
+        const limitNum = Math.min(100, Math.max(1, parseInt(limit) || 20));
+        const skip = (pageNum - 1) * limitNum;
+
         const studentId = req.user.role === 'STUDENT' ? req.user.student?.id : req.query.studentId;
 
         if (req.user.role === 'STUDENT' && !studentId) {
@@ -28,32 +32,40 @@ router.get('/results/aggregate', async (req, res, next) => {
             const activeSem = await prisma.semester_.findFirst({ where: { isCurrent: true } });
             semId = activeSem?.id;
         }
-
         if (!semId) return res.status(400).json({ error: 'No active semester found' });
 
-        // 2. Fetch Students
+        const activeSemRecord = await prisma.semester_.findUnique({ where: { id: semId } });
+
+        // 2. Build student where clause
+        const studentWhere = {
+            ...(studentId    && { id: studentId }),
+            ...(departmentId && { departmentId }),
+            ...(level        && { level: Number(level) }),
+        };
+
+        // 3. Count total for pagination
+        const total = await prisma.student.count({ where: studentWhere });
+
+        // 4. Fetch paginated students
         const students = await prisma.student.findMany({
-            where: {
-                ...(studentId && { id: studentId }),
-                ...(departmentId && { departmentId }),
-                ...(level && { level: Number(level) }),
-            },
+            where: studentWhere,
+            skip,
+            take: limitNum,
             include: {
                 department: { select: { name: true } },
                 enrollments: {
-                    where: { semester: (await prisma.semester_.findUnique({ where: { id: semId } }))?.name },
-                    include: { course: true }
+                    where: { semester: activeSemRecord?.name },
+                    include: { course: { select: { id: true, code: true, title: true } } }
                 }
             },
             orderBy: { lastName: 'asc' }
         });
 
-        // 3. For each student, aggregate scores
-        const results = await Promise.all(students.map(async (student) => {
+        // 5. For each student, aggregate scores
+        const rawResults = await Promise.all(students.map(async (student) => {
             const coursesData = await Promise.all(student.enrollments.map(async (enc) => {
                 const cId = enc.courseId;
 
-                // Attendance
                 const [totalSessions, presentCount] = await Promise.all([
                     prisma.attendanceSession.count({
                         where: {
@@ -71,15 +83,13 @@ router.get('/results/aggregate', async (req, res, next) => {
 
                 const attendanceScore = totalSessions > 0 ? (presentCount / totalSessions) * attendanceWeight : 0;
 
-                // Test Score (CBT where category = TEST)
                 const tests = await prisma.cbtAttempt.findMany({
                     where: { studentId: student.id, exam: { courseId: cId, semesterId: semId, category: 'TEST' } },
                     include: { exam: { select: { totalMarks: true } } }
                 });
                 const testScore = tests.reduce((sum, t) => sum + (t.score || 0), 0);
-                const testMax = tests.reduce((sum, t) => sum + (t.exam.totalMarks || 0), 0);
+                const testMax   = tests.reduce((sum, t) => sum + (t.exam.totalMarks || 0), 0);
 
-                // Exam Score (CBT where category = EXAM + Written)
                 const [cbtExams, writtenScores] = await Promise.all([
                     prisma.cbtAttempt.findMany({
                         where: { studentId: student.id, exam: { courseId: cId, semesterId: semId, category: 'EXAM' } },
@@ -92,20 +102,22 @@ router.get('/results/aggregate', async (req, res, next) => {
                 ]);
 
                 const examScore = cbtExams.reduce((sum, t) => sum + (t.score || 0), 0) + writtenScores.reduce((sum, s) => sum + (s.score || 0), 0);
-                const examMax = cbtExams.reduce((sum, t) => sum + (t.exam.totalMarks || 0), 0) + writtenScores.reduce((sum, s) => sum + (s.exam.totalMarks || 0), 0);
+                const examMax   = cbtExams.reduce((sum, t) => sum + (t.exam.totalMarks || 0), 0) + writtenScores.reduce((sum, s) => sum + (s.exam.totalMarks || 0), 0);
 
                 return {
+                    courseId: enc.courseId,
                     courseCode: enc.course.code,
                     courseTitle: enc.course.title,
                     attendance: { present: presentCount, total: totalSessions, score: Math.round(attendanceScore * 100) / 100, weight: attendanceWeight },
-                    test: { score: testScore, max: testMax },
-                    exam: { score: examScore, max: examMax },
+                    test:  { score: testScore, max: testMax },
+                    exam:  { score: examScore, max: examMax },
                     total: Math.round((attendanceScore + testScore + examScore) * 100) / 100
                 };
             }));
 
-            // Filter by courseId if requested (after processing all or selectively)
-            const filteredCourses = courseId ? coursesData.filter(c => student.enrollments.find(e => e.courseId === courseId && e.course.code === c.courseCode)) : coursesData;
+            const filteredCourses = courseId
+                ? coursesData.filter(c => c.courseId === courseId)
+                : coursesData;
 
             if (courseId && filteredCourses.length === 0) return null;
 
@@ -120,7 +132,8 @@ router.get('/results/aggregate', async (req, res, next) => {
             };
         }));
 
-        res.json(results.filter(r => r !== null));
+        const data = rawResults.filter(r => r !== null);
+        res.json({ data, total, page: pageNum, pages: Math.ceil(total / limitNum) });
     } catch (err) { next(err); }
 });
 

@@ -1,6 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, Users, UserCheck, BookOpen, Trash2, Edit2, Plus, Check, X } from 'lucide-react';
+import { ArrowLeft, Users, UserCheck, BookOpen, Trash2, Edit2, Plus, Check, X, StickyNote, Eye, PenLine, Download } from 'lucide-react';
+import ReactQuill from 'react-quill-new';
+import 'react-quill-new/dist/quill.snow.css';
 import api, { SERVER_URL } from '../api';
 import { useToast } from '../context/ToastContext';
 import { useAuth } from '../context/AuthContext';
@@ -41,6 +43,25 @@ export default function CourseDetail() {
     const [savingResource, setSavingResource] = useState(false);
     const [viewingMaterial, setViewingMaterial] = useState(null);
 
+    // ── My Notes (student only) ──────────────────────────────────────────
+    const [notes, setNotes] = useState([]);
+    const [loadingNotes, setLoadingNotes] = useState(false);
+    const [noteForm, setNoteForm] = useState({ title: '', content: '', color: '#ffffff', topicId: '' });
+    const [editingNoteId, setEditingNoteId] = useState(null);
+    const [savingNote, setSavingNote] = useState(false);
+    const [notePreview, setNotePreview] = useState(false);
+    const [viewNote, setViewNote] = useState(null); // full-screen viewer
+
+    const NOTE_COLORS = [
+        { label: 'White', value: '#ffffff' },
+        { label: 'Yellow', value: '#fef9c3' },
+        { label: 'Blue', value: '#dbeafe' },
+        { label: 'Green', value: '#dcfce7' },
+        { label: 'Pink', value: '#fce7f3' },
+        { label: 'Purple', value: '#ede9fe' },
+        { label: 'Orange', value: '#ffedd5' },
+    ];
+
     useEffect(() => {
         (async () => {
             try {
@@ -64,6 +85,7 @@ export default function CourseDetail() {
                     setSemester(curRes.data.name || semester);
                 }
                 loadResources();
+                if (user?.role === 'STUDENT') loadNotes();
             } catch { }
             setLoading(false);
         })();
@@ -78,11 +100,59 @@ export default function CourseDetail() {
         setLoadingResources(false);
     };
 
+    const loadNotes = async () => {
+        setLoadingNotes(true);
+        try {
+            const { data } = await api.get('/notes', { params: { courseId: id } });
+            setNotes(data || []);
+        } catch { }
+        setLoadingNotes(false);
+    };
+
+    const handleSaveNote = async (e) => {
+        e.preventDefault();
+        if (!noteForm.title.trim() || !noteForm.content.trim()) return;
+        setSavingNote(true);
+        try {
+            if (editingNoteId) {
+                const { data } = await api.put(`/notes/${editingNoteId}`, noteForm);
+                setNotes(prev => prev.map(n => n.id === editingNoteId ? data : n));
+                toast('Note updated ✅');
+            } else {
+                const { data } = await api.post('/notes', { ...noteForm, courseId: id });
+                setNotes(prev => [data, ...prev]);
+                toast('Note saved ✅');
+            }
+            setNoteForm({ title: '', content: '', color: '#ffffff', topicId: '' });
+            setEditingNoteId(null);
+            setNotePreview(false);
+        } catch (err) {
+            toast(err.response?.data?.error || 'Failed to save note', 'error');
+        }
+        setSavingNote(false);
+    };
+
+    const handleDeleteNote = async (noteId) => {
+        if (!window.confirm('Delete this note?')) return;
+        try {
+            await api.delete(`/notes/${noteId}`);
+            setNotes(prev => prev.filter(n => n.id !== noteId));
+            toast('Note deleted');
+        } catch { toast('Failed to delete note', 'error'); }
+    };
+
+    const startEditNote = (note) => {
+        setEditingNoteId(note.id);
+        setNoteForm({ title: note.title, content: note.content, color: note.color || '#ffffff', topicId: note.topicId || '' });
+        setNotePreview(false);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
     const loadInstructorsForAssignment = async () => {
         try {
             const { data } = await api.get('/instructors?limit=1000');
             setAvailableInstructors(data.data || []);
-        } catch {}
+        } catch { }
     };
 
     useEffect(() => {
@@ -285,9 +355,23 @@ export default function CourseDetail() {
             </div>
 
             <div className="tabs">
-                {['overview', 'curriculum', 'resources', 'students', (isAdmin || isInstructor) && 'enroll', (isAdmin || isInstructor) && 'assignments'].filter(Boolean).map(t => (
+                {[
+                    'overview',
+                    'curriculum',
+                    'resources',
+                    'students',
+                    (isAdmin || isInstructor) && 'enroll',
+                    (isAdmin || isInstructor) && 'assignments',
+                    user?.role === 'STUDENT' && 'notes',
+                ].filter(Boolean).map(t => (
                     <button key={t} className={`tab-btn ${tab === t ? 'active' : ''}`} onClick={() => setTab(t)}>
-                        {t === 'overview' ? 'Instructors' : t === 'curriculum' ? `Curriculum (${topics.length})` : t === 'resources' ? `Resources (${resources.length})` : t === 'students' ? `Students (${students.length})` : t === 'enroll' ? 'Enroll Students' : 'Assignments'}
+                        {t === 'overview' ? 'Instructors'
+                            : t === 'curriculum' ? `Curriculum (${topics.length})`
+                                : t === 'resources' ? `Resources (${resources.length})`
+                                    : t === 'students' ? `Students (${students.length})`
+                                        : t === 'enroll' ? 'Enroll Students'
+                                            : t === 'notes' ? `My Notes (${notes.length})`
+                                                : 'Assignments'}
                     </button>
                 ))}
             </div>
@@ -772,6 +856,237 @@ export default function CourseDetail() {
                             </div>
                         </form>
                     </div>
+                </div>
+            )}
+
+            {/* ─── MY NOTES (students only) ─────────────────────────────── */}
+            {tab === 'notes' && user?.role === 'STUDENT' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+
+                    {/* ── Note editor card ── */}
+                    <div className="card">
+                        <div className="flex items-center justify-between mb-16">
+                            <h3 style={{ fontWeight: 700, margin: 0 }}>
+                                {editingNoteId ? '✏️ Edit Note' : '+ New Note'}
+                            </h3>
+                            <div className="flex gap-8">
+                                <button
+                                    type="button"
+                                    className={`btn btn-sm ${notePreview ? 'btn-primary' : 'btn-secondary'}`}
+                                    onClick={() => setNotePreview(v => !v)}
+                                    title={notePreview ? 'Back to editor' : 'Preview markdown'}
+                                >
+                                    {notePreview ? <PenLine size={14} /> : <Eye size={14} />}
+                                    {notePreview ? 'Edit' : 'Preview'}
+                                </button>
+                                {editingNoteId && (
+                                    <button type="button" className="btn btn-sm btn-secondary" onClick={() => {
+                                        setEditingNoteId(null);
+                                        setNoteForm({ title: '', content: '', color: '#ffffff', topicId: '' });
+                                        setNotePreview(false);
+                                    }}>Cancel</button>
+                                )}
+                            </div>
+                        </div>
+
+                        <form onSubmit={handleSaveNote} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                            {/* Title + color row */}
+                            <div className="flex gap-12" style={{ alignItems: 'center' }}>
+                                <div className="form-group" style={{ flex: 1, minWidth: '60%', marginBottom: 0 }}>
+                                    <label>Title *</label>
+                                    <input
+                                        required
+                                        value={noteForm.title}
+                                        onChange={e => setNoteForm(f => ({ ...f, title: e.target.value }))}
+                                        placeholder="e.g. Lecture 3 Summary"
+                                        style={{ width: '100%', fontSize: '1.1rem', padding: '10px 14px', fontWeight: 500, display: 'block' }}
+                                    />
+                                </div>
+                                <div className="form-group" style={{ marginBottom: 0 }}>
+                                    <label>Colour</label>
+                                    <div className="flex gap-6" style={{ paddingTop: 6 }}>
+                                        {NOTE_COLORS.map(c => (
+                                            <button
+                                                key={c.value}
+                                                type="button"
+                                                title={c.label}
+                                                onClick={() => setNoteForm(f => ({ ...f, color: c.value }))}
+                                                style={{
+                                                    width: 22, height: 22, borderRadius: '50%',
+                                                    background: c.value,
+                                                    border: noteForm.color === c.value
+                                                        ? '2.5px solid var(--accent)'
+                                                        : '2px solid var(--border)',
+                                                    cursor: 'pointer', transition: 'transform 0.15s',
+                                                    transform: noteForm.color === c.value ? 'scale(1.25)' : 'scale(1)',
+                                                }}
+                                            />
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Topic filter */}
+                            {topics.length > 0 && (
+                                <div className="form-group" style={{ marginBottom: 0 }}>
+                                    <label>Linked Topic (optional)</label>
+                                    <select value={noteForm.topicId} onChange={e => setNoteForm(f => ({ ...f, topicId: e.target.value }))}>
+                                        <option value="">— No specific topic —</option>
+                                        {topics.map(t => <option key={t.id} value={t.id}>{t.title}</option>)}
+                                    </select>
+                                </div>
+                            )}
+
+                            {/* Editor / Preview toggle */}
+                            {notePreview ? (
+                                <div
+                                    style={{
+                                        minHeight: 200, padding: 16,
+                                        background: noteForm.color || '#ffffff',
+                                        border: '1px solid var(--border)', borderRadius: 8,
+                                        lineHeight: 1.7, fontSize: '0.9rem',
+                                    }}
+                                    dangerouslySetInnerHTML={{ __html: noteForm.content }}
+                                />
+                            ) : (
+                                <div className="form-group quill-container" style={{ marginBottom: 0 }}>
+                                    <label>Content *</label>
+                                    <ReactQuill
+                                        theme="snow"
+                                        value={noteForm.content}
+                                        onChange={(val) => setNoteForm(f => ({ ...f, content: val }))}
+                                        placeholder="Write your class summary here..."
+                                        style={{ background: '#fff' }}
+                                    />
+                                </div>
+                            )}
+
+                            <div>
+                                <button type="submit" className="btn btn-primary" disabled={savingNote || !noteForm.title.trim() || !noteForm.content.trim() || noteForm.content === '<p><br></p>'}>
+                                    <StickyNote size={15} />
+                                    {savingNote ? 'Saving…' : editingNoteId ? 'Update Note' : 'Save Note'}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    {/* ── Saved notes list ── */}
+                    {loadingNotes ? (
+                        <div className="loading-wrap"><div className="spinner" /></div>
+                    ) : notes.length === 0 ? (
+                        <div className="empty">
+                            <StickyNote size={48} />
+                            <p>No notes yet — write your first class summary above!</p>
+                        </div>
+                    ) : (
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16 }}>
+                            {notes.map(note => (
+                                <div
+                                    key={note.id}
+                                    style={{
+                                        background: note.color || '#ffffff',
+                                        border: '1px solid var(--border)',
+                                        borderRadius: 12,
+                                        padding: 18,
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        gap: 10,
+                                        transition: 'transform 0.15s',
+                                        cursor: 'pointer',
+                                    }}
+                                    onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; }}
+                                    onMouseLeave={e => { e.currentTarget.style.transform = ''; }}
+                                    onClick={() => setViewNote(note)}
+                                >
+                                    {/* Header */}
+                                    <div className="flex items-start justify-between" style={{ gap: 8 }}>
+                                        <h4 style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--text-primary)', margin: 0, flex: 1 }}>{note.title}</h4>
+                                        <div className="flex gap-4" onClick={e => e.stopPropagation()}>
+                                            <button
+                                                className="btn-icon" title="Edit"
+                                                style={{ color: 'var(--accent)' }}
+                                                onClick={() => startEditNote(note)}
+                                            >
+                                                <Edit2 size={14} />
+                                            </button>
+                                            <button
+                                                className="btn-icon" title="Delete"
+                                                style={{ color: 'var(--danger)' }}
+                                                onClick={() => handleDeleteNote(note.id)}
+                                            >
+                                                <Trash2 size={14} />
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    {/* Topic badge */}
+                                    {note.topic && (
+                                        <span className="badge badge-blue" style={{ fontSize: '0.7rem', width: 'fit-content' }}>{note.topic.title}</span>
+                                    )}
+
+                                    {/* Content preview */}
+                                    <p style={{
+                                        fontSize: '0.82rem',
+                                        color: 'var(--text-secondary)',
+                                        margin: 0,
+                                        display: '-webkit-box',
+                                        WebkitLineClamp: 3,
+                                        WebkitBoxOrient: 'vertical',
+                                        overflow: 'hidden',
+                                        lineHeight: 1.55,
+                                    }}>
+                                        {/* Strip HTML tags and entities for preview */}
+                                        {note.content.replace(/<[^>]*>?/gm, '').replace(/&nbsp;/g, ' ').substring(0, 200)}
+                                    </p>
+
+                                    {/* Footer */}
+                                    <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 'auto', paddingTop: 4 }}>
+                                        {new Date(note.updatedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+
+                    {/* ── Full note viewer modal ── */}
+                    {viewNote && (
+                        <div
+                            className="modal-backdrop"
+                            onClick={() => setViewNote(null)}
+                            style={{ zIndex: 9999 }}
+                        >
+                            <div
+                                className="modal"
+                                style={{ maxWidth: 720, width: '95%', background: viewNote.color || '#fff' }}
+                                onClick={e => e.stopPropagation()}
+                            >
+                                <div className="modal-header" style={{ borderBottom: '1px solid rgba(0,0,0,0.08)' }}>
+                                    <div>
+                                        <span className="modal-title">{viewNote.title}</span>
+                                        {viewNote.topic && (
+                                            <span className="badge badge-blue" style={{ marginLeft: 10, fontSize: '0.7rem' }}>{viewNote.topic.title}</span>
+                                        )}
+                                    </div>
+                                    <div className="flex gap-8">
+                                        <button className="btn btn-sm btn-secondary" onClick={() => { startEditNote(viewNote); setViewNote(null); }}>
+                                            <Edit2 size={13} /> Edit
+                                        </button>
+                                        <button className="btn-icon" onClick={() => setViewNote(null)}><X size={20} /></button>
+                                    </div>
+                                </div>
+                                <div
+                                    className="modal-body ql-editor"
+                                    style={{ lineHeight: 1.8, fontSize: '0.92rem', color: 'var(--text-primary)', paddingTop: 20 }}
+                                    dangerouslySetInnerHTML={{ __html: viewNote.content }}
+                                />
+                                <div className="modal-footer" style={{ borderTop: '1px solid rgba(0,0,0,0.08)', justifyContent: 'flex-start' }}>
+                                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                                        Last updated: {new Date(viewNote.updatedAt).toLocaleString()}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </div>
             )}
         </div>
