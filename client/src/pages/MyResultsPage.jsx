@@ -13,7 +13,7 @@ export default function MyResultsPage() {
         try {
             const { data } = await api.get('/students/results/aggregate');
             // Backend returns an array even for one student if filtering by studentId or role
-            setResults(data[0] || null);
+            setResults(data.data[0] || null);
         } catch (err) {
             toast('Failed to load your results', 'error');
         }
